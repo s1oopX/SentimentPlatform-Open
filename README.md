@@ -1,16 +1,26 @@
 # SentimentPlatform
 
+[![CI](https://github.com/s1oopX/SentimentPlatform-Open/actions/workflows/ci.yml/badge.svg)](https://github.com/s1oopX/SentimentPlatform-Open/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-111827.svg)](LICENSE)
+[![Django](https://img.shields.io/badge/Django-6-0C4B33?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vue.js&logoColor=white)](https://vuejs.org/)
+
 SentimentPlatform（云析智研）是一个面向中文评论数据的智能情感分析与洞察平台。项目覆盖用户注册登录、单条/批量评论分析、分析历史、分析师审核、报告生成、管理员数据集与模型管理、训练任务编排、操作审计等完整流程。
 
 这是独立的公开源码版本，只发布系统源码、测试、文档和开发脚本；不发布模型权重、训练数据集、本地数据库、演示账号、日志、上传文件、报告导出或训练产物。运行分析功能前，请按 `docs/model-and-data-assets.md` 在本地准备模型和数据。
 
 ## 项目定位
 
-- **业务目标**：对中文评论文本进行积极、中性、消极三分类，沉淀历史结果，并以图表、报告和管理后台支撑数据分析工作。
+- **业务目标**：对中文评论内容进行积极、中性、消极三分类，沉淀历史结果，并以图表、报告和管理后台支撑数据分析工作。
 - **用户角色**：普通用户、分析师、管理员三类角色分权访问。
 - **系统形态**：Vue 3 单页应用 + Django REST API + MySQL + Redis/Celery + 本地机器学习模型工作区。
 - **开源价值点**：包含数据预处理、模型训练与对比、模型部署推理、前后端分离、RBAC 权限、异步任务、可视化报表、审计日志、自动化测试和 CI。
-- **教学/论文价值点**：可作为“基于机器学习的中文情感分析平台”类课程设计、毕业设计或实验项目参考。
+
+## 界面预览
+
+![SentimentPlatform 产品入口页](docs/assets/screenshots/landing-desktop.png)
+
+公开版首页采用真实工作台预览呈现核心流程，截图由本仓库前端构建后生成，不包含模型权重、数据集、账号或业务隐私信息。
 
 ## 技术栈
 
@@ -209,17 +219,6 @@ npm run build
 ```
 
 验证结果：后端系统检查通过，后端测试通过，前端 lint、Prettier、vue-tsc 和生产构建均通过。
-
-## 论文撰写信息速览
-
-可直接用于论文的系统信息如下：
-
-- **需求分析**：普通用户需要评论情感识别和报告导出；分析师需要全局审核和统计洞察；管理员需要维护用户、数据、模型和训练任务。
-- **总体架构**：前后端分离 + REST API + RBAC + MySQL 持久化 + Redis/Celery 异步任务 + 模型工作区。
-- **数据流程**：数据导入/用户提交 -> 文本解析与校验 -> 模型推理 -> 情感结果与关键词入库 -> 图表分析/报告导出/审计记录。
-- **模型路线**：传统机器学习、神经网络基线、Transformer 微调与搜索并存，训练产物可登记为运行时模型并激活切换。
-- **安全设计**：JWT access token、HttpOnly refresh cookie、账号状态检查、管理员接口权限、文件类型与路径校验、操作日志审计。
-- **测试与验证**：后端 pytest 覆盖认证、权限、分析、报告、训练、备份、日志等；前端通过 ESLint、Prettier、vue-tsc 与构建验证。
 
 ## 详细文档
 

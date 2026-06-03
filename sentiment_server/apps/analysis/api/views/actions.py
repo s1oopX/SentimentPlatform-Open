@@ -37,7 +37,7 @@ BATCH_SCHEMA_COLUMNS = [
         "required": True,
         "type": "string",
         "max_length": 1000,
-        "description": "待分析的评论文本；xlsx 模板读取第一列，txt 模板每行一条评论",
+        "description": "待分析的评论内容；xlsx 模板读取第一列，txt 模板每行一条评论",
         "examples": BATCH_TEMPLATE_EXAMPLES,
     },
 ]

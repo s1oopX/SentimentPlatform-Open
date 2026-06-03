@@ -6,14 +6,14 @@ import { useAuthStore } from '@/stores/auth'
 import { getDefaultHomeRoute } from '@/router/access'
 import { isResolvedAuthenticated } from '@/router/guardState'
 import {
+  DataLine,
+  Lightning,
+  Lock,
   MagicStick,
+  Odometer,
+  SwitchButton,
   TrendCharts,
   UserFilled,
-  Lock,
-  Lightning,
-  DataLine,
-  SwitchButton,
-  Odometer,
 } from '@element-plus/icons-vue'
 import { useLogout } from '@/composables/useLogout'
 
@@ -43,43 +43,44 @@ const scrollToFeatures = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-    <!-- Header -->
-    <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
-      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <div class="flex items-center gap-2">
+  <div class="landing-page min-h-screen">
+    <header class="landing-header">
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+        <button class="brand-button" type="button" @click="router.push('/')">
           <AuthBrandBadge size="compact" />
-          <h1 class="m-0 text-xl font-bold text-slate-900">云析智研</h1>
-        </div>
-        <div class="flex items-center gap-3">
+          <span>云析智研</span>
+        </button>
+
+        <div class="flex flex-wrap items-center justify-end gap-3">
           <template v-if="isAuthenticated">
-            <div class="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5">
-              <div
-                class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs font-medium text-white"
-              >
+            <div class="session-pill">
+              <span class="session-avatar">
                 {{
                   (user?.display_name || user?.nickname || user?.email || 'U')
                     .charAt(0)
                     .toUpperCase()
                 }}
-              </div>
-              <span class="text-sm text-slate-700">{{
+              </span>
+              <span class="session-name">{{
                 user?.display_name || user?.nickname || user?.email
               }}</span>
             </div>
-            <el-button @click="router.push(getDefaultHomeRoute(user))">
+            <el-button
+              class="landing-secondary-button"
+              @click="router.push(getDefaultHomeRoute(user))"
+            >
               <el-icon class="mr-2"><Odometer /></el-icon>
               {{ authenticatedCtaLabel }}
             </el-button>
-            <el-button @click="handleLogout">
+            <el-button class="landing-secondary-button" @click="handleLogout">
               <el-icon class="mr-2"><SwitchButton /></el-icon>
               退出
             </el-button>
           </template>
           <template v-else>
-            <el-button class="landing-secondary-button" @click="router.push('/login')">
-              登录
-            </el-button>
+            <el-button class="landing-secondary-button" @click="router.push('/login')"
+              >登录</el-button
+            >
             <el-button
               type="primary"
               class="landing-primary-button"
@@ -92,441 +93,714 @@ const scrollToFeatures = () => {
       </div>
     </header>
 
-    <!-- Hero -->
-    <section class="relative overflow-hidden">
-      <!-- Decorative orbs -->
-      <div class="hero-orb hero-orb--blue"></div>
-      <div class="hero-orb hero-orb--purple"></div>
-      <div class="hero-orb hero-orb--cyan"></div>
-
-      <div class="relative mx-auto max-w-7xl px-6 pb-10 pt-20 text-center">
-        <div
-          class="mb-6 inline-flex items-center rounded-full bg-slate-100/80 px-3.5 py-1.5 text-sm font-medium text-slate-600 backdrop-blur-sm"
-        >
-          <el-icon class="mr-2"><MagicStick /></el-icon>
-          <span>AI 驱动的智能分析平台</span>
-        </div>
-
-        <h2 class="mb-6 text-4xl font-bold text-slate-900 md:text-5xl lg:text-6xl">
-          精准洞察用户情感<br />
-          <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            助力数据决策
-          </span>
-        </h2>
-
-        <p class="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-slate-600">
-          云析智研是一套基于深度学习的智能情感分析与洞察平台，帮助您快速理解用户反馈，
-          识别产品优化方向，提升用户体验
-        </p>
-
-        <div class="mb-14 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <el-button
-            type="primary"
-            size="large"
-            class="hero-btn shadow-lg"
-            @click="router.push('/register')"
-          >
-            <el-icon class="mr-2"><MagicStick /></el-icon> 免费开始
-          </el-button>
-          <el-button size="large" class="hero-btn" @click="scrollToFeatures"> 了解更多 </el-button>
-        </div>
-
-        <!-- Product Preview Card -->
-        <div class="mx-auto max-w-3xl">
-          <div
-            class="hero-preview-card rounded-2xl border border-slate-200/60 bg-white/70 p-6 shadow-2xl backdrop-blur-md"
-          >
-            <div class="mb-4 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="h-3 w-3 rounded-full bg-red-400"></div>
-                <div class="h-3 w-3 rounded-full bg-amber-400"></div>
-                <div class="h-3 w-3 rounded-full bg-green-400"></div>
-              </div>
-              <span class="text-xs font-medium tracking-wider text-slate-400 uppercase"
-                >情感分析引擎</span
-              >
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <!-- Input -->
-              <div class="rounded-xl bg-slate-50 p-4 text-left md:col-span-2">
-                <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  输入文本
-                </p>
-                <p class="text-sm leading-relaxed text-slate-700">
-                  “这款产品的体验非常棒，界面简洁直观，响应速度很快，客服也很耐心解答问题。”
-                </p>
-              </div>
-              <!-- Result -->
-              <div class="space-y-3 text-left">
-                <div class="rounded-xl bg-emerald-50 p-3">
-                  <p class="text-xs font-semibold text-emerald-600 mb-1">情感结果</p>
-                  <p class="text-lg font-bold text-emerald-700">积极 ↑</p>
-                </div>
-                <div class="rounded-xl bg-blue-50 p-3">
-                  <p class="text-xs font-semibold text-blue-600 mb-1">置信度</p>
-                  <div class="flex items-center gap-2">
-                    <div class="h-2 flex-1 rounded-full bg-blue-100">
-                      <div class="h-2 w-[94%] rounded-full bg-blue-500"></div>
-                    </div>
-                    <span class="text-sm font-bold text-blue-700">94%</span>
-                  </div>
-                </div>
-                <div class="flex flex-wrap gap-1.5">
-                  <span
-                    class="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
-                    >体验好</span
-                  >
-                  <span
-                    class="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
-                    >响应快</span
-                  >
-                  <span
-                    class="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
-                    >客服耐心</span
-                  >
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-12">
-          <div class="text-center">
-            <p
-              class="mb-3 text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
-            >
-              99.2%
-            </p>
-            <p class="text-base font-medium text-slate-600">分析准确率</p>
-          </div>
-          <div class="text-center">
-            <p
-              class="mb-3 text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
-            >
-              10M+
-            </p>
-            <p class="text-base font-medium text-slate-600">已处理评论</p>
-          </div>
-          <div class="text-center">
-            <p
-              class="mb-3 text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
-            >
-              1000+
-            </p>
-            <p class="text-base font-medium text-slate-600">企业用户</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Features -->
-    <section id="features" class="bg-slate-50 py-24">
-      <div class="mx-auto max-w-7xl px-6">
-        <div class="mb-16 text-center">
-          <h3 class="mb-4 text-2xl font-bold text-slate-900">强大的功能特性</h3>
-          <p class="text-lg text-slate-600">一站式情感分析解决方案，满足您的所有需求</p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <el-card shadow="hover" class="feature-card">
-            <div
-              class="feature-icon-wrapper mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl text-blue-600 transition-transform"
-            >
+    <main>
+      <section class="hero-section">
+        <div class="hero-grid mx-auto max-w-7xl px-6">
+          <div class="hero-copy">
+            <div class="eyebrow">
               <el-icon><MagicStick /></el-icon>
+              <span>开源中文情感分析平台</span>
             </div>
-            <h4 class="mb-3 text-lg font-semibold text-slate-900">智能分析</h4>
-            <p class="leading-relaxed text-slate-600">
-              基于 BERT 深度学习模型，精准识别文本中的情感倾向，支持积极、中性、消极三类情感分类
-            </p>
-          </el-card>
 
-          <el-card shadow="hover" class="feature-card">
-            <div
-              class="feature-icon-wrapper mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-2xl text-purple-600 transition-transform"
-            >
-              <el-icon><Lightning /></el-icon>
+            <h1>从评论流到可执行洞察</h1>
+            <p class="hero-lead">
+              面向产品反馈、客服工单和电商评论，提供评论解析、情感识别、分析师审核、报告生成与后台运维的一体化工作台。
+            </p>
+
+            <div class="hero-actions">
+              <el-button
+                v-if="isAuthenticated"
+                type="primary"
+                size="large"
+                class="landing-primary-button landing-primary-button--large"
+                @click="router.push(getDefaultHomeRoute(user))"
+              >
+                <el-icon class="mr-2"><Odometer /></el-icon>
+                {{ authenticatedCtaLabel }}
+              </el-button>
+              <el-button
+                v-else
+                type="primary"
+                size="large"
+                class="landing-primary-button landing-primary-button--large"
+                @click="router.push('/register')"
+              >
+                <el-icon class="mr-2"><MagicStick /></el-icon>
+                开始分析
+              </el-button>
+              <el-button
+                size="large"
+                class="landing-secondary-button landing-secondary-button--large"
+                @click="scrollToFeatures"
+              >
+                查看能力
+              </el-button>
             </div>
-            <h4 class="mb-3 text-lg font-semibold text-slate-900">批量处理</h4>
-            <p class="leading-relaxed text-slate-600">
-              支持 Excel、TXT 文件批量上传，一次性分析数千条评论，大幅提升工作效率
-            </p>
-          </el-card>
 
-          <el-card shadow="hover" class="feature-card">
-            <div
-              class="feature-icon-wrapper mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-2xl text-green-600 transition-transform"
-            >
+            <div class="boundary-strip">
+              <span>公开版仅包含源码、测试与文档</span>
+              <strong>模型权重与数据集需本地接入</strong>
+            </div>
+          </div>
+
+          <div class="console-preview" aria-label="情感分析工作台预览">
+            <div class="console-topbar">
+              <div class="console-dots" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <span>Sentiment Console</span>
+              <strong>Local Ready</strong>
+            </div>
+
+            <div class="console-body">
+              <aside class="console-rail" aria-hidden="true">
+                <span class="rail-item rail-item--active"></span>
+                <span class="rail-item"></span>
+                <span class="rail-item"></span>
+                <span class="rail-item"></span>
+              </aside>
+
+              <div class="insight-panel insight-panel--input">
+                <div class="panel-label">评论样本</div>
+                <p>“界面响应很快，批量导入后几分钟就能看到趋势，客服记录也更容易归类。”</p>
+                <div class="keyword-row">
+                  <span>响应快</span>
+                  <span>批量导入</span>
+                  <span>易归类</span>
+                </div>
+              </div>
+
+              <div class="insight-panel insight-panel--chart">
+                <div class="panel-label">情感分布</div>
+                <div class="bar-row">
+                  <span>积极</span>
+                  <div><i class="bar-positive"></i></div>
+                  <strong>62</strong>
+                </div>
+                <div class="bar-row">
+                  <span>中性</span>
+                  <div><i class="bar-neutral"></i></div>
+                  <strong>21</strong>
+                </div>
+                <div class="bar-row">
+                  <span>消极</span>
+                  <div><i class="bar-negative"></i></div>
+                  <strong>17</strong>
+                </div>
+              </div>
+
+              <div class="insight-panel insight-panel--queue">
+                <div class="panel-label">审核队列</div>
+                <ul>
+                  <li><span data-tone="risk"></span> 高风险差评待复核</li>
+                  <li><span data-tone="note"></span> 分析师备注已同步</li>
+                  <li><span data-tone="done"></span> 报告任务已入队</li>
+                </ul>
+              </div>
+
+              <div class="insight-panel insight-panel--metric">
+                <div>
+                  <span>覆盖流程</span>
+                  <strong>分析 · 审核 · 报告 · 运维</strong>
+                </div>
+                <TrendCharts class="metric-mark" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="feature-section">
+        <div class="mx-auto max-w-7xl px-6">
+          <div class="section-heading">
+            <span>Workflow</span>
+            <h2>围绕真实评论处理链路组织</h2>
+          </div>
+
+          <div class="capability-grid">
+            <article class="capability-card">
+              <el-icon><MagicStick /></el-icon>
+              <h3>文本分析</h3>
+              <p>单条与批量评论进入统一分析流程，结果包含情感标签、置信度、关键词和历史记录。</p>
+            </article>
+            <article class="capability-card">
               <el-icon><TrendCharts /></el-icon>
-            </div>
-            <h4 class="mb-3 text-lg font-semibold text-slate-900">数据可视化</h4>
-            <p class="leading-relaxed text-slate-600">
-              直观的图表展示分析结果，情感趋势一目了然，帮助您快速把握用户情绪变化
-            </p>
-          </el-card>
-
-          <el-card shadow="hover" class="feature-card">
-            <div
-              class="feature-icon-wrapper mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 text-2xl text-orange-600 transition-transform"
-            >
-              <el-icon><DataLine /></el-icon>
-            </div>
-            <h4 class="mb-3 text-lg font-semibold text-slate-900">报表导出</h4>
-            <p class="leading-relaxed text-slate-600">
-              支持 PDF、Excel、CSV 多种格式报表导出，方便分享和存档分析结果
-            </p>
-          </el-card>
-
-          <el-card shadow="hover" class="feature-card">
-            <div
-              class="feature-icon-wrapper mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-2xl text-red-600 transition-transform"
-            >
+              <h3>可视化洞察</h3>
+              <p>面向情感分布、趋势、关键词、模型指标和报告摘要提供可复用图表组件。</p>
+            </article>
+            <article class="capability-card">
               <el-icon><UserFilled /></el-icon>
-            </div>
-            <h4 class="mb-3 text-lg font-semibold text-slate-900">团队协作</h4>
-            <p class="leading-relaxed text-slate-600">
-              支持多角色权限管理，分析师可标注重点评论，团队协作更高效
-            </p>
-          </el-card>
-
-          <el-card shadow="hover" class="feature-card">
-            <div
-              class="feature-icon-wrapper mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-2xl text-slate-600 transition-transform"
-            >
+              <h3>角色工作台</h3>
+              <p>普通用户、分析师、管理员拥有独立导航、权限边界和默认工作入口。</p>
+            </article>
+            <article class="capability-card">
+              <el-icon><DataLine /></el-icon>
+              <h3>模型与数据管理</h3>
+              <p>公开版保留模型注册、训练任务和数据集管理代码，资产由部署者在本地准备。</p>
+            </article>
+            <article class="capability-card">
+              <el-icon><Lightning /></el-icon>
+              <h3>异步任务</h3>
+              <p>报告生成、训练队列、定时清理和自动重训检查通过 Celery 统一编排。</p>
+            </article>
+            <article class="capability-card">
               <el-icon><Lock /></el-icon>
+              <h3>审计与边界</h3>
+              <p>JWT、HttpOnly refresh cookie、RBAC、路径校验和操作日志共同守住高权限操作。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="flow-section">
+        <div class="mx-auto max-w-7xl px-6">
+          <div class="flow-panel">
+            <div class="flow-copy">
+              <span>Open Source Boundary</span>
+              <h2>源码公开，资产留在部署环境</h2>
+              <p>
+                仓库包含前后端源码、测试、CI、文档和空资产目录说明；模型权重、训练数据、本地账号、日志、上传文件与报告导出不进入公开版本。
+              </p>
             </div>
-            <h4 class="mb-3 text-lg font-semibold text-slate-900">数据安全</h4>
-            <p class="leading-relaxed text-slate-600">
-              企业级数据安全保障，支持数据备份恢复，确保您的数据万无一失
-            </p>
-          </el-card>
-        </div>
-      </div>
-    </section>
-
-    <!-- How it works -->
-    <section class="bg-white py-20">
-      <div class="mx-auto max-w-5xl px-6">
-        <div class="mb-14 text-center">
-          <h3 class="mb-4 text-2xl font-bold text-slate-900">三步开始</h3>
-          <p class="text-lg text-slate-600">从数据到洞察，只需简单三步</p>
-        </div>
-        <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
-          <div class="step-card">
-            <div
-              class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white shadow-lg shadow-blue-200"
-            >
-              1
+            <div class="flow-steps">
+              <div>
+                <strong>01</strong>
+                <span>准备本地模型与数据</span>
+              </div>
+              <div>
+                <strong>02</strong>
+                <span>启动 Django、Redis、Celery 与 Vite</span>
+              </div>
+              <div>
+                <strong>03</strong>
+                <span>在三角色工作台完成分析与运维</span>
+              </div>
             </div>
-            <h4 class="mb-2 text-lg font-semibold text-slate-900">上传数据</h4>
-            <p class="text-sm leading-relaxed text-slate-600">
-              粘贴单条评论或批量上传 Excel/TXT 文件，支持多种数据源接入
-            </p>
-          </div>
-          <div class="step-card">
-            <div
-              class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-600 text-lg font-bold text-white shadow-lg shadow-purple-200"
-            >
-              2
-            </div>
-            <h4 class="mb-2 text-lg font-semibold text-slate-900">AI 分析</h4>
-            <p class="text-sm leading-relaxed text-slate-600">
-              BERT 深度学习模型自动识别情感倾向，提取关键词与主题
-            </p>
-          </div>
-          <div class="step-card">
-            <div
-              class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-lg font-bold text-white shadow-lg shadow-emerald-200"
-            >
-              3
-            </div>
-            <h4 class="mb-2 text-lg font-semibold text-slate-900">获取洞察</h4>
-            <p class="text-sm leading-relaxed text-slate-600">
-              可视化图表和报表帮助您快速理解数据，赋能业务决策
-            </p>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
-    <!-- Use Cases -->
-    <section class="bg-slate-50 py-24">
-      <div class="mx-auto max-w-7xl px-6">
-        <div class="mb-16 text-center">
-          <h3 class="mb-4 text-2xl font-bold text-slate-900">适用场景</h3>
-          <p class="text-lg text-slate-600">广泛应用于各个行业和场景</p>
+    <footer class="landing-footer">
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-8">
+        <div class="flex items-center gap-2">
+          <AuthBrandBadge size="compact" />
+          <span>SentimentPlatform</span>
         </div>
-
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div class="usecase-card from-blue-50 to-purple-50">
-            <h4 class="mb-4 text-xl font-bold text-slate-900">电商平台</h4>
-            <p class="mb-4 text-slate-700">
-              分析商品评论，了解用户对产品的真实评价，快速发现产品问题和优化方向
-            </p>
-            <ul class="usecase-list" data-tone="blue">
-              <li>识别差评重点问题</li>
-              <li>追踪产品口碑变化</li>
-              <li>优化产品描述和服务</li>
-            </ul>
-          </div>
-
-          <div class="usecase-card from-green-50 to-blue-50">
-            <h4 class="mb-4 text-xl font-bold text-slate-900">社交媒体</h4>
-            <p class="mb-4 text-slate-700">监测品牌舆情，及时发现负面信息，维护品牌形象和声誉</p>
-            <ul class="usecase-list" data-tone="green">
-              <li>实时舆情监控</li>
-              <li>品牌口碑分析</li>
-              <li>竞品对比分析</li>
-            </ul>
-          </div>
-
-          <div class="usecase-card from-purple-50 to-pink-50">
-            <h4 class="mb-4 text-xl font-bold text-slate-900">客户服务</h4>
-            <p class="mb-4 text-slate-700">分析客户反馈和投诉，提升服务质量，改善用户体验</p>
-            <ul class="usecase-list" data-tone="purple">
-              <li>客户满意度评估</li>
-              <li>服务问题识别</li>
-              <li>客服质量监控</li>
-            </ul>
-          </div>
-
-          <div class="usecase-card from-orange-50 to-red-50">
-            <h4 class="mb-4 text-xl font-bold text-slate-900">市场调研</h4>
-            <p class="mb-4 text-slate-700">分析用户调研问卷和反馈，洞察市场需求和用户偏好</p>
-            <ul class="usecase-list" data-tone="orange">
-              <li>用户需求挖掘</li>
-              <li>市场趋势分析</li>
-              <li>竞争力评估</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- CTA -->
-    <section class="bg-slate-900 py-20 text-center">
-      <div class="mx-auto max-w-4xl px-6">
-        <h3 class="mb-4 text-3xl font-bold text-white md:text-5xl">准备好开始了吗？</h3>
-        <p class="mb-10 text-xl text-slate-300">立即注册，免费体验智能情感分析服务</p>
-        <el-button
-          type="primary"
-          size="large"
-          class="landing-cta-button"
-          @click="router.push('/register')"
-        >
-          免费注册
-        </el-button>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="border-t border-slate-200 bg-white py-12">
-      <div class="mx-auto max-w-7xl px-6">
-        <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
-          <div>
-            <div class="mb-4 flex items-center gap-2">
-              <AuthBrandBadge size="compact" />
-              <h4 class="font-bold text-slate-900">云析智研</h4>
-            </div>
-            <p class="text-sm text-slate-600">智能情感分析与洞察平台，助力企业数据决策</p>
-          </div>
-          <div>
-            <h5 class="mb-4 font-semibold text-slate-900">产品</h5>
-            <ul class="flex list-none flex-col gap-2 p-0">
-              <li>
-                <a href="#features" class="text-sm text-slate-600 no-underline hover:text-slate-900"
-                  >功能特性</a
-                >
-              </li>
-              <li><span class="text-sm text-slate-400">价格方案</span></li>
-              <li><span class="text-sm text-slate-400">使用文档</span></li>
-            </ul>
-          </div>
-          <div>
-            <h5 class="mb-4 font-semibold text-slate-900">公司</h5>
-            <ul class="flex list-none flex-col gap-2 p-0">
-              <li><span class="text-sm text-slate-400">关于我们</span></li>
-              <li><span class="text-sm text-slate-400">联系我们</span></li>
-              <li><span class="text-sm text-slate-400">隐私政策</span></li>
-            </ul>
-          </div>
-          <div>
-            <h5 class="mb-4 font-semibold text-slate-900">支持</h5>
-            <ul class="flex list-none flex-col gap-2 p-0">
-              <li><span class="text-sm text-slate-400">帮助中心</span></li>
-              <li><span class="text-sm text-slate-400">API 文档</span></li>
-              <li><span class="text-sm text-slate-400">社区论坛</span></li>
-            </ul>
-          </div>
-        </div>
-        <div class="mt-12 border-t border-slate-200 pt-8 text-center text-sm text-slate-600">
-          <p>&copy; 2026 云析智研. All rights reserved.</p>
-        </div>
+        <p>MIT licensed source release · model and dataset assets are intentionally excluded</p>
       </div>
     </footer>
   </div>
 </template>
 
 <style scoped>
-/* ── Hero decorative orbs ── */
-
-.hero-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.35;
-  pointer-events: none;
-}
-.hero-orb--blue {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
-  top: -120px;
-  left: -100px;
-}
-.hero-orb--purple {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
-  top: 60px;
-  right: -80px;
-}
-.hero-orb--cyan {
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
-  bottom: -60px;
-  left: 30%;
+.landing-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92)),
+    repeating-linear-gradient(90deg, rgba(15, 23, 42, 0.035) 0 1px, transparent 1px 104px);
+  color: #0f172a;
 }
 
-.hero-preview-card {
-  transition: all 0.4s ease;
-}
-.hero-preview-card:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(148, 163, 184, 0.1);
+.landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid rgba(203, 213, 225, 0.82);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
 }
 
-/* ── Step cards ── */
+.brand-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 0;
+}
 
-.step-card {
-  padding: 2rem;
-  border-radius: 1rem;
+.session-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 18rem;
   border: 1px solid #e2e8f0;
-  background: white;
-  transition: all 0.3s ease;
-}
-.step-card:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.08),
-    0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.375rem 0.75rem 0.375rem 0.375rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
-/* ── Element Plus button overrides ── */
+.session-avatar {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.session-name {
+  min-width: 0;
+  overflow: hidden;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-section {
+  padding: 3rem 0 1.5rem;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  gap: 3rem;
+  align-items: center;
+}
+
+.hero-copy {
+  max-width: 42rem;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0.5rem 0.8rem;
+}
+
+.hero-copy h1 {
+  margin: 1.25rem 0 1rem;
+  max-width: 11ch;
+  color: #0f172a;
+  font-size: 3.65rem;
+  font-weight: 850;
+  line-height: 1.03;
+}
+
+.hero-lead {
+  max-width: 40rem;
+  color: #475569;
+  font-size: 1.06rem;
+  line-height: 1.75;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.6rem;
+}
+
+.boundary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1.4rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.boundary-strip strong {
+  color: #0f766e;
+  font-weight: 800;
+}
+
+.console-preview {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 8px;
+  background: #0f172a;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.18);
+}
+
+.console-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: #111827;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.8rem 1rem;
+}
+
+.console-topbar strong {
+  margin-left: auto;
+  border: 1px solid rgba(20, 184, 166, 0.32);
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.12);
+  color: #5eead4;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+}
+
+.console-dots {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.console-dots span {
+  width: 0.58rem;
+  height: 0.58rem;
+  border-radius: 999px;
+  background: #64748b;
+}
+
+.console-dots span:nth-child(1) {
+  background: #fb7185;
+}
+
+.console-dots span:nth-child(2) {
+  background: #facc15;
+}
+
+.console-dots span:nth-child(3) {
+  background: #34d399;
+}
+
+.console-body {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 0.85rem;
+  min-height: 21rem;
+  padding: 1rem;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(31, 41, 55, 0.96)),
+    linear-gradient(90deg, rgba(20, 184, 166, 0.08), rgba(245, 158, 11, 0.06));
+}
+
+.console-rail {
+  grid-row: span 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.42);
+  padding: 0.85rem 0;
+}
+
+.rail-item {
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.rail-item--active {
+  background: #14b8a6;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.18);
+}
+
+.insight-panel {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  padding: 1rem;
+}
+
+.panel-label {
+  margin-bottom: 0.85rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.insight-panel--input {
+  grid-column: span 2;
+}
+
+.insight-panel--input p {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 1.02rem;
+  line-height: 1.8;
+}
+
+.keyword-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.keyword-row span {
+  border: 1px solid rgba(20, 184, 166, 0.24);
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.1);
+  color: #99f6e4;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 2.7rem minmax(0, 1fr) 2.1rem;
+  gap: 0.6rem;
+  align-items: center;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  margin: 0.85rem 0;
+}
+
+.bar-row div {
+  overflow: hidden;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.bar-row i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.bar-positive {
+  width: 78%;
+  background: #22c55e;
+}
+
+.bar-neutral {
+  width: 44%;
+  background: #f59e0b;
+}
+
+.bar-negative {
+  width: 31%;
+  background: #f43f5e;
+}
+
+.insight-panel--queue ul {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.insight-panel--queue li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #dbeafe;
+  font-size: 0.86rem;
+}
+
+.insight-panel--queue span {
+  width: 0.58rem;
+  height: 0.58rem;
+  border-radius: 999px;
+}
+
+.insight-panel--queue span[data-tone='risk'] {
+  background: #fb7185;
+}
+
+.insight-panel--queue span[data-tone='note'] {
+  background: #38bdf8;
+}
+
+.insight-panel--queue span[data-tone='done'] {
+  background: #34d399;
+}
+
+.insight-panel--metric {
+  grid-column: span 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.18), rgba(245, 158, 11, 0.12));
+}
+
+.insight-panel--metric span {
+  display: block;
+  color: #99f6e4;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.insight-panel--metric strong {
+  display: block;
+  margin-top: 0.3rem;
+  color: #ffffff;
+  font-size: 1.05rem;
+}
+
+.metric-mark {
+  width: 3rem;
+  height: 3rem;
+  color: #fcd34d;
+}
+
+.feature-section,
+.flow-section {
+  padding: 4rem 0;
+}
+
+.feature-section {
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.75rem;
+}
+
+.section-heading {
+  max-width: 48rem;
+  margin-bottom: 2rem;
+}
+
+.section-heading span,
+.flow-copy span {
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.section-heading h2,
+.flow-copy h2 {
+  margin: 0.55rem 0 0;
+  color: #0f172a;
+  font-size: 2rem;
+  font-weight: 850;
+}
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.capability-card {
+  min-height: 13rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 1.35rem;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.capability-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+}
+
+.capability-card .el-icon {
+  width: 2.3rem;
+  height: 2.3rem;
+  color: #0f766e;
+}
+
+.capability-card:nth-child(2) .el-icon,
+.capability-card:nth-child(5) .el-icon {
+  color: #2563eb;
+}
+
+.capability-card:nth-child(3) .el-icon,
+.capability-card:nth-child(6) .el-icon {
+  color: #e11d48;
+}
+
+.capability-card h3 {
+  margin: 0.85rem 0 0.55rem;
+  color: #0f172a;
+  font-size: 1.05rem;
+  font-weight: 850;
+}
+
+.capability-card p,
+.flow-copy p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.flow-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 1.05fr);
+  gap: 2rem;
+  align-items: center;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 2rem;
+}
+
+.flow-steps {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.flow-steps div {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.flow-steps strong {
+  color: #0f766e;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.flow-steps span {
+  color: #1e293b;
+  font-weight: 750;
+}
+
+.landing-footer {
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.landing-footer span {
+  color: #0f172a;
+  font-weight: 850;
+}
+
+.landing-footer p {
+  margin: 0;
+}
 
 .landing-primary-button {
   --el-button-bg-color: #0f172a;
@@ -536,205 +810,81 @@ const scrollToFeatures = () => {
   --el-button-hover-border-color: #1e293b;
   --el-button-active-bg-color: #020617;
   --el-button-active-border-color: #020617;
-  min-width: 110px;
+  min-width: 7rem;
   height: 2.5rem;
-  padding: 0 1rem;
-  border-radius: 0.875rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  font-weight: 750;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
 }
 
-.landing-primary-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+.landing-primary-button--large,
+.landing-secondary-button--large {
+  min-width: 9.5rem;
+  height: 3rem;
 }
 
 .landing-secondary-button {
-  --el-button-bg-color: rgba(255, 255, 255, 0.92);
+  --el-button-bg-color: rgba(255, 255, 255, 0.94);
   --el-button-border-color: #cbd5e1;
   --el-button-text-color: #0f172a;
   --el-button-hover-bg-color: #f8fafc;
   --el-button-hover-border-color: #94a3b8;
   --el-button-active-bg-color: #f1f5f9;
   --el-button-active-border-color: #94a3b8;
-  min-width: 74px;
-  height: 2.5rem;
-  padding: 0 1rem;
-  border-radius: 0.875rem;
-  font-size: 0.95rem;
-  font-weight: 500;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-}
-
-.landing-secondary-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
-}
-
-.landing-cta-button {
-  --el-button-bg-color: #ffffff;
-  --el-button-border-color: rgba(255, 255, 255, 0.24);
-  --el-button-text-color: #0f172a;
-  --el-button-hover-bg-color: #f8fafc;
-  --el-button-hover-border-color: rgba(255, 255, 255, 0.32);
-  --el-button-active-bg-color: #f1f5f9;
-  --el-button-active-border-color: rgba(255, 255, 255, 0.36);
-  min-width: 176px;
-  height: 3.25rem;
-  padding: 0 1.5rem;
-  border-radius: 1rem;
-  font-size: 1rem;
+  border-radius: 8px;
   font-weight: 700;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
 }
 
-.landing-cta-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.24);
+@media (max-width: 1024px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-copy h1 {
+    max-width: 14ch;
+    font-size: 3.25rem;
+  }
+
+  .capability-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.hero-btn {
-  min-width: 160px;
-  height: 3rem;
-  font-weight: 600;
-}
+@media (max-width: 720px) {
+  .hero-section {
+    padding: 3.5rem 0 3rem;
+  }
 
-.shadow-lg {
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
-}
+  .hero-copy h1 {
+    font-size: 2.55rem;
+  }
 
-/* ── Feature cards ── */
+  .hero-lead {
+    font-size: 1rem;
+  }
 
-.feature-card {
-  transition: all 0.3s ease;
-}
+  .console-body {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
 
-.feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
+  .console-rail {
+    display: none;
+  }
 
-.feature-card:hover .feature-icon-wrapper {
-  transform: scale(1.1);
-}
+  .insight-panel,
+  .insight-panel--input,
+  .insight-panel--metric {
+    grid-column: auto;
+  }
 
-/* ── Use case cards ── */
+  .capability-grid,
+  .flow-panel {
+    grid-template-columns: 1fr;
+  }
 
-.usecase-card {
-  padding: 1.75rem;
-  border-radius: 1rem;
-  background: linear-gradient(to bottom right, var(--tw-gradient-from), var(--tw-gradient-to));
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
-}
-
-.usecase-card:hover {
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.from-blue-50 {
-  --tw-gradient-from: #eff6ff;
-}
-.to-purple-50 {
-  --tw-gradient-to: #faf5ff;
-}
-.from-green-50 {
-  --tw-gradient-from: #f0fdf4;
-}
-.to-blue-50 {
-  --tw-gradient-to: #eff6ff;
-}
-.from-purple-50 {
-  --tw-gradient-from: #faf5ff;
-}
-.to-pink-50 {
-  --tw-gradient-to: #fdf2f8;
-}
-.from-orange-50 {
-  --tw-gradient-from: #fff7ed;
-}
-.to-red-50 {
-  --tw-gradient-to: #fef2f2;
-}
-
-.usecase-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  color: #475569;
-}
-
-.usecase-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.usecase-list li::before {
-  content: '';
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: currentColor;
-}
-
-.usecase-list[data-tone='blue'] li {
-  color: #2563eb;
-}
-.usecase-list[data-tone='green'] li {
-  color: #16a34a;
-}
-.usecase-list[data-tone='purple'] li {
-  color: #9333ea;
-}
-.usecase-list[data-tone='orange'] li {
-  color: #ea580c;
-}
-
-/* ── Dark mode overrides ── */
-
-html.dark .from-blue-50 {
-  --tw-gradient-from: #0f172a;
-}
-html.dark .to-purple-50 {
-  --tw-gradient-to: #1e1b4b;
-}
-html.dark .from-green-50 {
-  --tw-gradient-from: #0f172a;
-}
-html.dark .to-blue-50 {
-  --tw-gradient-to: #172554;
-}
-html.dark .from-purple-50 {
-  --tw-gradient-from: #1e1b4b;
-}
-html.dark .to-pink-50 {
-  --tw-gradient-to: #1f1235;
-}
-html.dark .from-orange-50 {
-  --tw-gradient-from: #1c1917;
-}
-html.dark .to-red-50 {
-  --tw-gradient-to: #1f1235;
-}
-
-html.dark .usecase-list {
-  color: #94a3b8;
-}
-html.dark .landing-secondary-button {
-  --el-button-bg-color: rgba(15, 23, 42, 0.92);
-  --el-button-border-color: #475569;
-  --el-button-text-color: #e2e8f0;
-  --el-button-hover-bg-color: #1e293b;
-  --el-button-hover-border-color: #64748b;
+  .flow-panel {
+    padding: 1.25rem;
+  }
 }
 </style>
