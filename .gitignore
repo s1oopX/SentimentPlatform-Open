@@ -1,0 +1,81 @@
+# Local IDE state
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.worktrees/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.pytest_cache_compat/
+.pytest_tmp/
+.pytest_tmp_compat/
+pytest_tmp*/
+pytest-cache-files-*/
+mode_700_probe/
+.coverage
+*.egg-info/
+build/
+dist/
+
+# Node
+node_modules/
+sentiment_webapp/dist/
+sentiment_webapp/dist-ssr/
+*.tsbuildinfo
+.eslintcache
+
+# Runtime outputs
+sentiment_server/logs/
+sentiment_server/media/
+sentiment_server/uploads/
+sentiment_server/staticfiles/
+sentiment_server/generated_reports/
+sentiment_server/exports/
+sentiment_server/backups/
+sentiment_server/celerybeat-schedule*
+
+# Datasets: public releases intentionally do not ship training data.
+sentiment_server/ml_assets/data/**/*.arrow
+sentiment_server/ml_assets/data/**/cache-*.arrow
+sentiment_server/ml_assets/data/**/dataset_info.json
+sentiment_server/ml_assets/data/**/state.json
+sentiment_server/ml_assets/data/chinese-news-sentiment-c3-ds/
+sentiment_server/ml_assets/data/splits/
+sentiment_server/ml_assets/data/generated/
+
+# Models and training artifacts: keep only docs/placeholders.
+sentiment_server/ml_assets/models/**
+!sentiment_server/ml_assets/models/
+!sentiment_server/ml_assets/models/README.md
+
+# Local-only demonstration and sample data
+演示账号与数据说明.txt
+新建 文本文档.txt
+真实批量分析样本.txt
+真实批量分析样本.xlsx
+
+# OS and logs
+.DS_Store
+Thumbs.db
+*.log
+*.local
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

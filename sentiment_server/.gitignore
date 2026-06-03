@@ -1,0 +1,52 @@
+# Local-only environment files
+.env
+.venv/
+.worktrees/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.pytest_tmp/
+.pytest_cache_compat/
+.pytest_tmp_compat/
+pytest_tmp*/
+pytest-cache-files-*/
+mode_700_probe/
+.coverage
+
+# Celery Beat runtime schedule
+celerybeat-schedule*
+
+# HuggingFace dataset cache files
+cache-*.arrow
+
+# Training runtime artifacts
+training_args.bin
+
+# Runtime output directories
+generated_reports/
+logs/
+media/
+staticfiles/
+uploads/
+backups/
+exports/
+
+# Packaging and build artifacts
+*.egg-info/
+dist/
+build/
+
+# Current asset policy / cleanup target under ml_assets/:
+# - keep the bert baseline runtime asset tracked at ml_assets/models/bert/**
+# - keep sample training input tracked at ml_assets/data/splits/** for now
+# - keep generated split outputs under ml_assets/generated/** ignored
+# - treat other model directories under ml_assets/models/* as generated artifacts going forward
+# Historical generated outputs may still appear as staged removals while cleanup lands.
+/ml_assets/generated/
+/ml_assets/models/*/
+!/ml_assets/models/bert/
+!/ml_assets/models/bert/**

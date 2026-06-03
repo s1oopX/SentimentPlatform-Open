@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentiment-platform-server"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "celery>=5.6,<6",
+    "django>=6,<7",
+    "djangorestframework>=3.17,<4",
+    "djangorestframework-simplejwt>=5.5,<6",
+    "drf-spectacular>=0.29,<1",
+    "openpyxl>=3.1,<4",
+    "pillow>=12,<13",
+    "mysqlclient>=2.2,<3",
+    "python-dotenv>=1.2,<2",
+    "redis>=7.4,<8",
+    "reportlab>=4.4,<5",
+    "safetensors>=0.7,<1",
+    "torch>=2.7,<2.8",
+    "transformers>=5.5,<6",
+]
+
+[project.optional-dependencies]
+ml-common = [
+    "jieba>=0.42,<1",
+    "nltk>=3.9,<4",
+    "scikit-learn>=1.7,<2",
+]
+training = [
+    "sentiment-platform-server[ml-common]",
+    "datasets>=4,<5",
+    "gensim>=4,<5",
+    "joblib>=1.5,<2",
+    "matplotlib>=3.10,<4",
+    "numpy>=2.3,<3",
+    "seaborn>=0.13,<1",
+]
+testing = [
+    "sentiment-platform-server[ml-common]",
+    "faker>=40,<41",
+    "pytest>=9,<10",
+    "pytest-django>=4,<5",
+    "ruff>=0.14,<1",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "sentiment_server.settings.base"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["-v", "--tb=short", "-p", "no:cacheprovider", "--basetemp=.pytest_tmp_compat"]
+cache_dir = ".pytest_cache_compat"
+filterwarnings = [
+    # jieba 0.42 imports deprecated setuptools pkg_resources from jieba._compat.
+    'ignore:pkg_resources is deprecated as an API.*:UserWarning:jieba\._compat',
+]
+norecursedirs = [
+    ".git",
+    ".venv",
+    ".pytest_cache",
+    ".pytest_cache_compat",
+    ".pytest_tmp",
+    ".pytest_tmp_compat",
+    "pytest_tmp*",
+    "pytest-cache-files-*",
+    "mode_700_probe",
+]
+
+[tool.setuptools.packages.find]
+include = ["apps*", "core*", "ml_assets*", "sentiment_server*"]
+exclude = ["logs*", "media*", "uploads*", "generated_reports*", "staticfiles*", "templates*", "docs*"]
+
+[tool.ruff.lint.per-file-ignores]
+# Compat shims: re-export symbols so existing intra-app imports work.
+"apps/admin_panel/models.py" = ["F401"]
+"apps/admin_panel/services.py" = ["F401"]
+"apps/admin_panel/tasks.py" = ["F401"]
+"apps/admin_panel/training_services.py" = ["F401"]
+"apps/admin_panel/api/responses.py" = ["F401"]
+"apps/analysis/api/responses.py" = ["F401"]
+# Training scripts must insert project root into sys.path before importing
+# ml_assets, so E402 is unavoidable in these entry-point scripts.
+"ml_assets/scripts/**" = ["E402", "S104", "S311", "S603", "PLC0415", "PLR0913", "PLR2004"]
+# ML workspace uses late imports for lazy-loading heavy dependencies (torch, etc.)
+# and training functions naturally accept many configuration parameters.
+"ml_assets/workspace/**" = ["PLC0415", "PLR0913"]
+# Tests use assert (standard pytest), hardcoded passwords/variables for fixtures,
+# and late imports for Django test isolation.
+"tests/**" = ["S101", "S105", "S106", "S107", "PLC0415", "PLR2004"]
+# Django settings use star imports by convention.
+"sentiment_server/settings/**" = ["F403"]
+# ML codebase intentionally uses fullwidth CJK punctuation in user-facing strings.
+"ml_assets/**" = ["RUF001"]
+"ml_assets/tests/**" = ["S101"]
+"ml_assets/workspace/training/neural_baselines.py" = ["S105"]
+# Runtime settings and URL config contain Chinese error messages with fullwidth punctuation.
+"sentiment_server/runtime_settings.py" = ["RUF001"]
+"sentiment_server/urls.py" = ["RUF001"]

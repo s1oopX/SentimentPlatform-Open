@@ -1,0 +1,101 @@
+/* ===== Element Plus Input / Select 圆角覆盖 ===== */
+.el-input-rounded .el-input__wrapper,
+.el-input-rounded .el-select__wrapper {
+  border-radius: var(--radius);
+  box-shadow: none;
+  border: 1px solid hsl(var(--border));
+  padding: 0 1rem;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.el-input-rounded .el-input__wrapper.is-focus,
+.el-input-rounded .el-select__wrapper.is-focused {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+/* ===== Element Plus Textarea 圆角覆盖 ===== */
+.el-textarea-rounded .el-textarea__inner {
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  box-shadow: none;
+  padding: 1rem;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.el-textarea-rounded .el-textarea__inner:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+  outline: none;
+}
+
+/* ===== Form Label ===== */
+.form-label-sm .el-form-item__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+}
+
+/* ===== 表格 Header（管理后台风格） ===== */
+.admin-table-header {
+  background-color: transparent !important;
+  color: hsl(var(--muted-foreground));
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 16px 0;
+}
+.admin-table .el-table__row {
+  transition: background-color 0.15s;
+}
+.admin-table .el-table__row:hover > td {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* ===== InputNumber 覆盖 ===== */
+.el-number-rounded .el-input-number__increase,
+.el-number-rounded .el-input-number__decrease {
+  background-color: transparent;
+  border: none;
+}
+.el-number-rounded .el-input__wrapper {
+  border-radius: var(--radius);
+}
+
+/* ===== Dialog 弹窗圆角 ===== */
+.el-dialog {
+  border-radius: 1rem !important;
+  overflow: hidden;
+}
+.el-dialog__header {
+  padding: 1.25rem 1.5rem 0.75rem;
+}
+.el-dialog__body {
+  padding: 0 1.5rem 1.5rem;
+}
+
+/* ===== 全局表格去重边框 ===== */
+.el-table {
+  --el-table-border-color: hsl(var(--border));
+}
+.el-table::before,
+.el-table::after {
+  display: none;
+}
+
+/* ===== Tag 标签统一圆角 ===== */
+.el-tag {
+  border-radius: 6px;
+}
+
+/* ===== 全局按钮圆角 ===== */
+.el-button {
+  border-radius: 8px;
+}
+.el-button--large {
+  border-radius: var(--radius);
+}

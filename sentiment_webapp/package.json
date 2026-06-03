@@ -1,0 +1,53 @@
+{
+  "name": "sentiment-platform-web",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --force",
+    "dev:full": "pwsh -NoProfile -ExecutionPolicy Bypass -File ../scripts/dev/pycharm-dev-monitor.ps1",
+    "dev:backend": "pwsh -NoProfile -Command \"$env:DJANGO_SETTINGS_MODULE='sentiment_server.settings.local'; Set-Location ../sentiment_server; ./.venv/Scripts/python.exe manage.py runserver 127.0.0.1:8000 --noreload\"",
+    "dev:celery-default": "pwsh -NoProfile -Command \"$env:DJANGO_SETTINGS_MODULE='sentiment_server.settings.local'; Set-Location ../sentiment_server; ./.venv/Scripts/python.exe -m celery -A sentiment_server worker -Q celery -l info -P solo\"",
+    "dev:celery-training": "pwsh -NoProfile -Command \"$env:DJANGO_SETTINGS_MODULE='sentiment_server.settings.local'; Set-Location ../sentiment_server; ./.venv/Scripts/python.exe -m celery -A sentiment_server worker -Q training -l info -P solo -n training@%h\"",
+    "dev:celery-beat": "pwsh -NoProfile -Command \"$env:DJANGO_SETTINGS_MODULE='sentiment_server.settings.local'; Set-Location ../sentiment_server; ./.venv/Scripts/python.exe -m celery -A sentiment_server beat -l info\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "format": "prettier --write --no-error-on-unmatched-pattern \"*.{js,json}\" \".prettierrc.json\" \"src/**/*.{js,vue,css}\"",
+    "format:check": "prettier --check --no-error-on-unmatched-pattern \"*.{js,json}\" \".prettierrc.json\" \"src/**/*.{js,vue,css}\"",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "check": "npm run lint && npm run format:check && npm run typecheck"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "@vueuse/core": "^14.2.1",
+    "axios": "^1.15.0",
+    "dompurify": "^3.4.1",
+    "echarts": "^6.0.0",
+    "element-plus": "^2.13.6",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.31",
+    "vue-router": "^5.0.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^25.6.0",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.8.0",
+    "globals": "^17.5.0",
+    "postcss": "^8.5.10",
+    "prettier": "^3.8.3",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.3",
+    "unplugin-vue-components": "^32.0.0",
+    "vite": "^8.0.8",
+    "vue-eslint-parser": "^10.4.0",
+    "vue-tsc": "^3.2.7"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  }
+}

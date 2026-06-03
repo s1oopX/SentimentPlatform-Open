@@ -1,0 +1,46 @@
+{
+  "purpose": "Manual local usage smoke samples for single-comment sentiment analysis.",
+  "created_for": "SentimentPlatform local verification",
+  "samples": [
+    {
+      "title": "positive_product",
+      "content": "这款空气净化器运行很安静，安装简单，卧室异味明显少了，整体非常满意。",
+      "expected_tone": "positive",
+      "category": "家电",
+      "project_name": "2026 春季电商口碑巡检",
+      "source": "manual-single"
+    },
+    {
+      "title": "negative_after_sales",
+      "content": "售后一直让我重复提交照片，问题拖了一周还没处理，体验非常糟糕。",
+      "expected_tone": "negative",
+      "category": "售后服务",
+      "project_name": "2026 春季电商口碑巡检",
+      "source": "manual-single"
+    },
+    {
+      "title": "neutral_delivery",
+      "content": "配送时间和页面预计差不多，包装没有破损，商品表现中规中矩。",
+      "expected_tone": "neutral",
+      "category": "物流配送",
+      "project_name": "2026 春季电商口碑巡检",
+      "source": "manual-single"
+    },
+    {
+      "title": "positive_report_feature",
+      "content": "报表中心现在能快速生成周报，下载后的内容也比较完整，给运营复盘省了不少时间。",
+      "expected_tone": "positive",
+      "category": "平台功能",
+      "project_name": "分析平台自测",
+      "source": "manual-single"
+    },
+    {
+      "title": "negative_ui_latency",
+      "content": "筛选条件切换时偶尔会卡住，列表刷新反馈不够明显，第一次使用容易误以为没生效。",
+      "expected_tone": "negative",
+      "category": "平台功能",
+      "project_name": "分析平台自测",
+      "source": "manual-single"
+    }
+  ]
+}
