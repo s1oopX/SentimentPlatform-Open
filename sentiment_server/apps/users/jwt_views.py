@@ -24,10 +24,12 @@ class CookieAwareTokenRefreshSerializer(TokenRefreshSerializer):
         refresh = self.token_class(attrs["refresh"])
         user_id = refresh.get("user_id")
         user = User.objects.filter(pk=user_id).first()
-        if not user or user.status != 1:
+        if not user:
             raise AuthenticationFailed(
-                "No active account found", code="no_active_account"
+                "账号不存在或登录状态已失效", code="no_active_account"
             )
+        if user.status != 1:
+            raise AuthenticationFailed("账号已被禁用", code="user_disabled")
 
         return super().validate(attrs)
 

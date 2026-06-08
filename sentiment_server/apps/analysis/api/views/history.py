@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from apps.analysis.application.queries.history import (
     build_history_detail_payload,
     build_history_list_payload,
+    build_history_session_detail_payload,
     build_history_summary_payload,
 )
 from apps.analysis.api.serializers.history import (
@@ -47,6 +48,18 @@ class AnalysisHistorySummaryView(APIView):
                 validated_data=serializer.validated_data,
             )
         )
+
+
+class AnalysisHistorySessionDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        payload = build_history_session_detail_payload(pk=pk, user=request.user)
+        if not payload:
+            return Response(
+                {"error": "分析记录不存在"}, status=status.HTTP_404_NOT_FOUND
+            )
+        return Response(payload)
 
 
 class AnalysisResultDetailView(APIView):

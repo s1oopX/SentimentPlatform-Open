@@ -29,6 +29,10 @@ export function getDatasets(params) {
   return request.get('/admin/datasets/', { params, suppressErrorMessage: true })
 }
 
+export function getAutoRetrainStatus() {
+  return request.get('/admin/datasets/auto-retrain-status/', { suppressErrorMessage: true })
+}
+
 /** @param {object} data */
 export function importDataset(data) {
   return request.post('/admin/datasets/import/', data, {

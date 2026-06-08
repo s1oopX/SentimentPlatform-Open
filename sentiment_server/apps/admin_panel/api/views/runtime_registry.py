@@ -18,6 +18,7 @@ from apps.admin_panel.application.runtime_registry.commands import (
 )
 from apps.admin_panel.infra.runtime_registry.registry import (
     is_effectively_runtime_compatible,
+    runtime_artifact_type,
 )
 
 
@@ -79,14 +80,15 @@ class ModelLogsView(AdminOnlyAPIView):
             build_runtime_logs as _build_logs_from_payload,
         )
 
-        # Build a payload compatible with build_runtime_logs
-        # Don't call get_model_loader() — it blocks if model is loading
+        # Build a payload compatible with build_runtime_logs.
+        # Don't call get_model_loader() here; it can block while a model is loading.
+        runtime_type = runtime_artifact_type(model.path)
         payload = {
             "id": model.id,
             "path": model.path or "",
             "model_type": model.model_type or "",
             "metrics": {
-                "runtime_type": model.model_type or "",
+                "runtime_type": runtime_type,
                 "loaded": model.is_active,
                 "device": "cpu",
             },

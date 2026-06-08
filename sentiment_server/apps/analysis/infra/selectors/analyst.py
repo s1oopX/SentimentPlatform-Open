@@ -3,11 +3,14 @@ from django.db.models import Count, Q
 from apps.analysis.domain.access_rules import (
     has_analyst_access as domain_has_analyst_access,
 )
+from apps.analysis.domain.review_rules import REVIEW_CONFIDENCE_THRESHOLD
 from apps.analysis.models import AnalysisResult
 
 from apps.analysis.infra.selectors.analysis_results import (
     apply_date_range_with_comment_fallback,
 )
+
+ANALYST_REVIEW_CONFIDENCE_THRESHOLD = REVIEW_CONFIDENCE_THRESHOLD
 
 
 def has_analyst_access(user):
@@ -19,11 +22,18 @@ def get_analyst_base_queryset():
 
 
 def get_visible_analyst_queryset(user):
-    """精简后分析师可以看到所有分析结果。"""
+    """分析师可查看的全量分析结果，用于报表和概览。"""
     queryset = get_analyst_base_queryset()
     if user.role in ("admin", "analyst"):
         return queryset
     return queryset.none()
+
+
+def get_visible_analyst_review_queryset(user):
+    """评论审核池只包含低置信度结果。"""
+    return get_visible_analyst_queryset(user).filter(
+        confidence__lt=ANALYST_REVIEW_CONFIDENCE_THRESHOLD
+    )
 
 
 def apply_analyst_filters(queryset, validated_data):
@@ -58,7 +68,7 @@ def apply_analyst_filters(queryset, validated_data):
 
 
 def get_analyst_category_options(user):
-    queryset = get_visible_analyst_queryset(user)
+    queryset = get_visible_analyst_review_queryset(user)
     return [
         row["comment__category"]
         for row in (

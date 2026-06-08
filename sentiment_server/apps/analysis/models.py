@@ -45,6 +45,10 @@ class AnalysisResult(models.Model):
         (0, "中性"),
         (-1, "消极"),
     )
+    ANALYSIS_CHANNEL_CHOICES = (
+        ("single", "单条分析"),
+        ("batch", "批量分析"),
+    )
 
     user = models.ForeignKey(
         User,
@@ -62,8 +66,47 @@ class AnalysisResult(models.Model):
     sentiment = models.SmallIntegerField("情感类别", choices=SENTIMENT_CHOICES)
     confidence = models.DecimalField("置信度", max_digits=5, decimal_places=4)
     keywords = models.JSONField("关键情感词", blank=True, null=True)
+    analysis_channel = models.CharField(
+        "分析渠道",
+        max_length=20,
+        choices=ANALYSIS_CHANNEL_CHOICES,
+        default="single",
+        db_index=True,
+    )
+    analysis_session_id = models.UUIDField(
+        "分析会话ID", blank=True, null=True, db_index=True
+    )
+    analysis_source_name = models.CharField(
+        "分析来源名称", max_length=255, blank=True, default=""
+    )
+    corrected_sentiment = models.SmallIntegerField(
+        "人工修正情感类别",
+        choices=SENTIMENT_CHOICES,
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="reviewed_analysis_results",
+        verbose_name="审核人",
+        blank=True,
+        null=True,
+    )
+    reviewed_at = models.DateTimeField("审核时间", blank=True, null=True)
     analyst_note = models.TextField("分析备注", blank=True, null=True)
     is_priority = models.BooleanField("是否重点关注", default=False)
+    training_dataset_ref = models.CharField(
+        "自动训练数据集引用",
+        max_length=255,
+        blank=True,
+        default="",
+        db_index=True,
+    )
+    training_dataset_at = models.DateTimeField(
+        "加入自动训练数据集时间", blank=True, null=True
+    )
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
 
     class Meta:
@@ -81,6 +124,21 @@ class AnalysisResult(models.Model):
 
     def __str__(self):
         return f"{self.comment.content[:20]} - {self.get_sentiment_display()}"
+
+    @property
+    def final_sentiment(self):
+        return (
+            self.corrected_sentiment
+            if self.corrected_sentiment is not None
+            else self.sentiment
+        )
+
+    @property
+    def is_reviewed(self):
+        return self.reviewed_at is not None
+
+    def get_final_sentiment_display(self):
+        return dict(self.SENTIMENT_CHOICES).get(self.final_sentiment, "")
 
 
 class Model(models.Model):

@@ -23,9 +23,7 @@ import TrendChart from '@/components/TrendChart.vue'
  *   keyword_top?: any[]
  *   sentiment_distribution?: any
  *   category_distribution?: any[]
- *   project_distribution?: any[]
  *   confidence_buckets?: any[]
- *   source_distribution?: any[]
  *   recent_results?: any[]
  *   [key: string]: any
  * }} AnalystOverviewData
@@ -82,6 +80,20 @@ const statsCards = computed(() => {
       description: '需要重点跟进的样本',
       icon: Filter,
       tone: 'slate',
+    },
+    {
+      title: '待复核',
+      value: stats.pending_review_count,
+      description: '低置信度且未审核',
+      icon: Filter,
+      tone: 'red',
+    },
+    {
+      title: '已审核',
+      value: stats.reviewed_count,
+      description: '已完成人工审核',
+      icon: View,
+      tone: 'green',
     },
   ]
 })
@@ -169,7 +181,7 @@ const rangeLabel = computed(() => {
 
     <template v-else>
       <!-- KPI Cards -->
-      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         <StatCard
           v-for="card in statsCards"
           :key="card.title"
@@ -207,25 +219,11 @@ const rangeLabel = computed(() => {
           empty-text="暂无分类分布数据"
         />
         <MetricBarChart
-          title="项目分布"
-          :items="overview.project_distribution || []"
-          label-key="label"
-          value-key="value"
-          empty-text="暂无项目分布数据"
-        />
-        <MetricBarChart
           title="置信度分布"
           :items="overview.confidence_buckets || []"
           label-key="label"
           value-key="value"
           empty-text="暂无置信度分布数据"
-        />
-        <MetricBarChart
-          title="来源分布"
-          :items="overview.source_distribution || []"
-          label-key="label"
-          value-key="value"
-          empty-text="暂无来源分布数据"
         />
       </div>
 

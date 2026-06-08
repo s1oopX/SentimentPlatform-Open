@@ -57,9 +57,10 @@ def import_dataset(*, uploaded_file, project_name="", operator, client_ip=None):
     )
 
 
-def export_dataset(*, comments, export_format, operator, client_ip=None):
+def export_dataset(*, comments=None, results=None, export_format, operator, client_ip=None):
     return export_dataset_command(
         comments=comments,
+        results=results,
         export_format=export_format,
         operator=operator,
         client_ip=client_ip,

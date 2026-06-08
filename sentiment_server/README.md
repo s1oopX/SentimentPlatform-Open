@@ -64,7 +64,7 @@ sentiment_server/
 | `users` | `users.User` | 自定义用户表，邮箱唯一，三角色与启停状态 |
 | `email_verification_codes` | `users.EmailVerificationCode` | 验证码哈希、用途、失败尝试、过期控制 |
 | `comments` | `analysis.Comment` | 评论内容、项目、评分、类别、来源、评论时间 |
-| `analysis_results` | `analysis.AnalysisResult` | 情感类别、置信度、关键词、备注、重点标记 |
+| `analysis_results` | `analysis.AnalysisResult` | 情感类别、置信度、关键词、分析渠道、人工修正、审核信息、自动训练数据集引用 |
 | `models` | `analysis.Model` | 模型名称、版本、路径、指标、激活与兼容状态 |
 | `training_runs` | `admin_panel.TrainingRun` | 训练任务、配置快照、指标快照、产物路径、日志 |
 | `reports` | `reports.Report` | 报告类型、格式、状态、文件路径、摘要 |
@@ -77,9 +77,9 @@ sentiment_server/
 | `/api/healthz/` | 服务健康检查 |
 | `/api/auth/` | `captcha`、`send-code`、`register`、`login`、`refresh`、`logout`、`profile`、`change-password`、`reset-password` |
 | `/api/analyze/` | `single`、`batch`、`batch/template`、`batch/schema`、`history`、`result/<id>`、`runtime-capabilities` |
-| `/api/analyze/analyst/` | `overview`、`comments`、`comments/<id>`、`report` |
+| `/api/analyze/analyst/` | `overview`、`comments`、`comments/<id>`、`report`、`report/export` |
 | `/api/report/` | `generate`、`list`、`download/<id>` |
-| `/api/admin/` | 用户、日志、仪表盘、备份、数据集、模型、训练记录与日志 |
+| `/api/admin/` | 用户、日志、仪表盘、备份、数据集、自动重训状态、模型、训练记录与日志 |
 | `/api/schema/`、`/swagger/`、`/redoc/` | OpenAPI 文档，需开启 `SWAGGER_ENABLED` |
 
 ## 认证与权限
@@ -156,17 +156,19 @@ sentiment_server/
 - 删除失败、已取消或演示命名的训练记录。
 - 仪表盘、最近记录和对比视图自动过滤失败记录与演示命名记录。
 - 训练详情页可按权限展示删除、重试、后处理重试和激活入口。
+- 自动重训支持按阈值把有效标注保存为 HuggingFace Dataset，并根据配置自动提交训练任务或仅记录 signal 提醒。
 
 ## 数据集管理
 
-管理员数据集导入支持：
+管理员数据集管理面向用户分析记录与分析师审核结果：
 
-- TXT：逐行读取评论，UTF-8 编码，自动跳过空行、重复行和长度异常数据。
-- XLSX：从第二行开始读取，支持评论内容、评分、类别、来源等字段归一化。
-- 文件大小受 `MAX_UPLOAD_SIZE` 控制。
-- 导入时进行文件内去重和数据库已有内容去重。
-
-数据集导出支持 `csv` 与 `xlsx`，导出文件保存在 `EXPORT_ROOT`，下载前会校验路径必须位于导出目录内。
+- 用户单条/批量分析会沉淀为 `AnalysisResult` 记录。
+- 批量分析会记录会话 ID、分析渠道和来源文件名，前端可展示本次分析摘要与明细。
+- 分析师可修正情感标签，修正后写入人工最终标签、审核人和审核时间。
+- 管理员可按关键词、分类、来源、分析渠道、最终标签、审核状态和日期筛选。
+- 数据集导出支持 `csv` 与 `xlsx`，默认导出 `text`、`label`、`label_name` 等训练友好字段；人工修正标签优先，没有修正时使用模型原始标签。
+- 导出文件保存在 `EXPORT_ROOT`，下载前会校验路径必须位于导出目录内。
+- 自动重训状态接口会展示当前累计、阈值进度、最近自动生成的数据集批次和训练任务状态。
 
 ## 报告生成
 

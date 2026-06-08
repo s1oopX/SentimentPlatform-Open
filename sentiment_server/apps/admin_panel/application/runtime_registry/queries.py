@@ -78,7 +78,11 @@ def build_runtime_model_list_response(
         needs_runtime_record_persistence_fn=needs_runtime_record_persistence_fn,
         persist_runtime_model_payload_fn=persist_runtime_model_payload_fn,
     )
-    return Model.objects.select_related("source_run").all().order_by("-created_at")
+    return (
+        Model.objects.select_related("source_run")
+        .all()
+        .order_by("-is_active", "-created_at", "-id")
+    )
 
 
 def build_runtime_logs_response(

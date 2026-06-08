@@ -31,7 +31,10 @@ class AnalystCommentFilterSerializer(AnalysisHistorySerializer):
 class AnalystCommentNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnalysisResult
-        fields = ["analyst_note", "is_priority"]
+        fields = ["analyst_note", "is_priority", "corrected_sentiment"]
+        extra_kwargs = {
+            "corrected_sentiment": {"required": False, "allow_null": True},
+        }
 
 
 class AnalystReportSerializer(DateRangeValidationMixin, serializers.Serializer):
@@ -40,6 +43,15 @@ class AnalystReportSerializer(DateRangeValidationMixin, serializers.Serializer):
     category = serializers.CharField(label="商品类别", required=False, allow_blank=True)
     keyword_limit = serializers.IntegerField(
         label="关键词数量", default=30, min_value=1, max_value=100
+    )
+
+
+class AnalystReportExportSerializer(AnalystReportSerializer):
+    format = serializers.ChoiceField(
+        label="导出格式",
+        choices=[("csv", "CSV"), ("xlsx", "Excel")],
+        default="xlsx",
+        required=False,
     )
 
 

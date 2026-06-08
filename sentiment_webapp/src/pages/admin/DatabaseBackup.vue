@@ -24,8 +24,8 @@ const handleBackup = async () => {
   backupResult.value = null
   backupError.value = ''
   try {
-    const res = await triggerDatabaseBackup()
-    backupResult.value = res.data
+    await triggerDatabaseBackup()
+    backupResult.value = true
     ElMessage.success('数据库备份成功')
   } catch (/** @type {any} */ err) {
     backupError.value = err?.response?.data?.error || '备份失败，请检查服务器配置'
@@ -91,13 +91,10 @@ const handleBackup = async () => {
       </el-button>
 
       <div v-if="backupResult" class="mt-5 rounded-lg bg-green-50 border border-green-200 p-4">
-        <div class="flex items-center gap-2 text-green-700 font-medium mb-2">
+        <div class="flex items-center gap-2 text-green-700 font-medium">
           <el-icon><CircleCheckFilled /></el-icon>
-          {{ backupResult.message }}
+          数据库备份成功
         </div>
-        <pre v-if="backupResult.output" class="text-xs text-green-600 whitespace-pre-wrap">{{
-          backupResult.output
-        }}</pre>
       </div>
 
       <div v-if="backupError" class="mt-5 rounded-lg bg-red-50 border border-red-200 p-4">

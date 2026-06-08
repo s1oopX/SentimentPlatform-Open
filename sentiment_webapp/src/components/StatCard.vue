@@ -90,7 +90,7 @@ const trendClass = computed(() => {
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0 space-y-1.5 flex-1">
         <p
-          class="truncate text-sm font-medium text-slate-500 transition-colors group-hover:text-slate-600"
+          class="text-sm font-medium leading-5 text-slate-500 transition-colors group-hover:text-slate-600"
         >
           {{ title }}
         </p>

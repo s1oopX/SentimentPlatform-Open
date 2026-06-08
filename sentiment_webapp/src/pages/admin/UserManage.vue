@@ -109,6 +109,7 @@ const getUserInitial = (user) => {
   const label = getUserDisplayName(user)
   return label ? label.charAt(0).toUpperCase() : '?'
 }
+const getRowClassName = ({ row }) => (isUserEnabled(row) ? '' : 'is-disabled-user-row')
 
 const fetchUsers = async () => {
   loading.value = true
@@ -151,10 +152,13 @@ useRefreshOnActivated(fetchUsers)
 const handleStatusToggle = async (row) => {
   const actionText = isUserEnabled(row) ? '禁用' : '启用'
   const displayName = getUserDisplayName(row)
+  const impactText = isUserEnabled(row)
+    ? '禁用后该用户将无法登录，已登录会话会在下次请求时失效。'
+    : '启用后该用户可以重新登录并恢复使用权限。'
 
   try {
     const { value: reason } = await ElMessageBox.prompt(
-      `确定要 ${actionText} 用户 "${displayName}" 吗？\n请填写操作理由（1-200字）`,
+      `确定要 ${actionText} 用户 "${displayName}" 吗？\n${impactText}\n请填写操作理由（1-200字）`,
       '状态变更确认',
       {
         confirmButtonText: '确定',
@@ -186,14 +190,14 @@ const handleStatusToggle = async (row) => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col space-y-8">
+  <div class="mx-auto flex h-full w-full max-w-7xl flex-col space-y-6">
     <div class="space-y-2">
       <h1 class="text-2xl font-bold text-slate-800">用户管理</h1>
       <p class="text-slate-500 text-sm">管控系统权限、角色分配及账户活跃状态</p>
     </div>
 
     <div
-      class="bg-white rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col overflow-hidden"
+      class="flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
     >
       <el-alert
         v-if="errorMessage"
@@ -206,9 +210,9 @@ const handleStatusToggle = async (row) => {
 
       <!-- Toolbar -->
       <div
-        class="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4"
+        class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/50 px-5 py-4"
       >
-        <div class="flex flex-wrap gap-4">
+        <div class="flex flex-wrap items-center gap-3">
           <el-input
             v-model="queryParams.search"
             placeholder="搜索昵称、邮箱或手机号..."
@@ -229,19 +233,20 @@ const handleStatusToggle = async (row) => {
         <el-table
           v-loading="loading"
           :data="tableData"
-          class="admin-table h-full"
+          class="admin-table user-manage-table h-full"
           header-cell-class-name="admin-table-header"
+          :row-class-name="getRowClassName"
         >
           <template #empty>
             <div class="py-10 text-sm text-slate-500">
               {{ emptyStateMessage }}
             </div>
           </template>
-          <el-table-column prop="id" label="编号" width="70" align="center" />
+          <el-table-column prop="id" label="编号" width="64" align="center" />
 
-          <el-table-column label="用户信息" min-width="220">
+          <el-table-column label="用户信息" min-width="290" header-align="center">
             <template #default="scope">
-              <div class="flex items-center gap-3 py-2">
+              <div class="flex min-w-0 items-center gap-3 py-2 pl-4">
                 <el-avatar
                   :size="40"
                   :src="scope.row.avatar || undefined"
@@ -249,15 +254,19 @@ const handleStatusToggle = async (row) => {
                 >
                   {{ getUserInitial(scope.row) }}
                 </el-avatar>
-                <div class="flex flex-col">
-                  <span class="font-bold text-slate-900">{{ getUserDisplayName(scope.row) }}</span>
-                  <span class="text-xs text-slate-500">{{ scope.row.email }}</span>
+                <div class="flex min-w-0 max-w-[24rem] flex-col">
+                  <span class="truncate font-bold text-slate-900">{{
+                    getUserDisplayName(scope.row)
+                  }}</span>
+                  <span class="truncate text-xs text-slate-500" :title="scope.row.email">{{
+                    scope.row.email
+                  }}</span>
                 </div>
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column label="角色权限" width="120">
+          <el-table-column label="角色权限" min-width="116" align="center">
             <template #default="scope">
               <el-tag
                 :type="
@@ -268,26 +277,26 @@ const handleStatusToggle = async (row) => {
                       : 'info'
                 "
                 effect="light"
-                class="!px-3 !rounded-md !font-semibold"
+                class="!rounded-md !px-3 !font-semibold"
               >
                 {{ scope.row.role_display || scope.row.role || '-' }}
               </el-tag>
             </template>
           </el-table-column>
 
-          <el-table-column label="账户状态" width="110" align="center">
+          <el-table-column label="账户状态" min-width="112" align="center">
             <template #default="scope">
               <div class="flex items-center justify-center">
                 <div
                   v-if="isUserEnabled(scope.row)"
-                  class="flex items-center gap-1.5 text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs font-bold"
+                  class="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-600"
                 >
                   <div class="h-1.5 w-1.5 bg-green-600 rounded-full"></div>
                   {{ scope.row.status_display || '启用' }}
                 </div>
                 <div
                   v-else
-                  class="flex items-center gap-1.5 text-slate-400 bg-slate-50 px-2 py-1 rounded-full text-xs font-bold"
+                  class="flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400"
                 >
                   <div class="h-1.5 w-1.5 bg-slate-400 rounded-full"></div>
                   {{ scope.row.status_display || '禁用' }}
@@ -296,7 +305,7 @@ const handleStatusToggle = async (row) => {
             </template>
           </el-table-column>
 
-          <el-table-column prop="created_at" label="加入时间" width="150" align="center">
+          <el-table-column prop="created_at" label="加入时间" min-width="136" align="center">
             <template #default="scope">
               <span class="text-slate-500 text-sm font-mono">{{
                 formatDateTime(scope.row.created_at)
@@ -304,10 +313,10 @@ const handleStatusToggle = async (row) => {
             </template>
           </el-table-column>
 
-          <el-table-column label="快捷操作" width="160" align="center">
+          <el-table-column label="快捷操作" min-width="150" align="center">
             <template #default="scope">
               <div v-if="isSelf(scope.row)" class="text-xs text-slate-400">当前账号</div>
-              <div v-else class="flex items-center justify-center gap-2">
+              <div v-else class="flex items-center justify-center gap-3 whitespace-nowrap">
                 <el-button
                   link
                   type="primary"
@@ -344,7 +353,7 @@ const handleStatusToggle = async (row) => {
       </div>
 
       <!-- Pagination Footer -->
-      <div class="p-4 border-t border-slate-100 bg-white flex justify-end">
+      <div class="flex justify-end border-t border-slate-100 bg-white p-4">
         <el-pagination
           v-model:current-page="queryParams.page"
           v-model:page-size="queryParams.page_size"
@@ -444,3 +453,17 @@ const handleStatusToggle = async (row) => {
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+:deep(.user-manage-table .cell) {
+  min-width: 0;
+}
+
+:deep(.user-manage-table .is-disabled-user-row > td) {
+  background-color: #f8fafc;
+}
+
+:deep(.user-manage-table .is-disabled-user-row:hover > td) {
+  background-color: #f1f5f9 !important;
+}
+</style>

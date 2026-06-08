@@ -54,6 +54,11 @@ export function getAnalysisResultDetail(id) {
   return request.get(`/analyze/result/${id}/`, { suppressErrorMessage: true })
 }
 
+/** @param {number|string} id */
+export function getAnalysisHistorySessionDetail(id) {
+  return request.get(`/analyze/history/session/${id}/`, { suppressErrorMessage: true })
+}
+
 /** @param {Record<string,any>} params */
 export function getAnalystOverview(params) {
   return request.get('/analyze/analyst/overview/', { params, suppressErrorMessage: true })
@@ -77,4 +82,13 @@ export function deleteAnalystComment(id) {
 /** @param {Record<string,any>} params */
 export function getAnalystReport(params) {
   return request.get('/analyze/analyst/report/', { params, suppressErrorMessage: true })
+}
+
+/** @param {Record<string,any>} params */
+export function exportAnalystReport(params) {
+  return request.get('/analyze/analyst/report/export/', {
+    params,
+    responseType: 'blob',
+    suppressErrorMessage: true,
+  })
 }

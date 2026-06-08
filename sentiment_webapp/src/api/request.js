@@ -16,6 +16,7 @@ const PUBLIC_AUTH_ENDPOINTS = new Set([
 const LOGOUT_ENDPOINT = '/auth/logout/'
 const DEFAULT_ERROR_MESSAGE = '请求失败，请稍后重试'
 const SESSION_EXPIRED_MESSAGE = '登录状态已过期，请重新登录'
+const DISABLED_ACCOUNT_MESSAGE = '账号已被禁用，请联系管理员'
 const NETWORK_ERROR_MESSAGE = '网络异常，请检查服务是否启动'
 // Only used as base for new URL(relativePath, base) to extract pathname — never sent over network
 const URL_FALLBACK_ORIGIN = 'http://localhost'
@@ -77,6 +78,22 @@ export const extractErrorMessage = (error, fallback = DEFAULT_ERROR_MESSAGE) => 
   const message = pickMessageFromPayload(error?.response?.data)
   return message || fallback
 }
+
+const payloadHasDisabledAccountSignal = (payload) => {
+  const message = pickMessageFromPayload(payload)
+  const code = typeof payload === 'object' && payload ? payload.code || payload.detail?.code : ''
+  return (
+    code === 'user_disabled' ||
+    code === 'no_active_account' ||
+    message.includes('账号已被禁用') ||
+    message.includes('No active account found')
+  )
+}
+
+const resolveSessionExpiredMessage = (error) =>
+  payloadHasDisabledAccountSignal(error?.response?.data)
+    ? DISABLED_ACCOUNT_MESSAGE
+    : SESSION_EXPIRED_MESSAGE
 
 const request = axios.create({
   baseURL: '/api',
@@ -169,7 +186,7 @@ const handleSessionExpired = (error) => {
   redirectingToLogin = true
   clearSessionTokens()
   requestSideEffects.onSessionExpired({
-    message: SESSION_EXPIRED_MESSAGE,
+    message: resolveSessionExpiredMessage(error),
     error,
   })
 

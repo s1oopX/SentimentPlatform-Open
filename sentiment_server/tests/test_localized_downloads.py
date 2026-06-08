@@ -13,7 +13,8 @@ from apps.admin_panel.application.training_admin.queries import (
     build_training_log_download_metadata,
 )
 from apps.analysis.api.views.actions import BatchTemplateView
-from apps.analysis.models import Comment
+from apps.analysis.api.views.analyst import AnalystReportExportView
+from apps.analysis.models import AnalysisResult, Comment
 from apps.users.models import User
 
 
@@ -111,6 +112,31 @@ def test_dataset_export_escapes_spreadsheet_formulas(tmp_path):
 
 
 @pytest.mark.django_db
+def test_labeled_dataset_export_uses_corrected_sentiment(tmp_path):
+    operator = _admin_user()
+    comment = Comment.objects.create(content="售后一直没有回复", category="售后服务")
+    result = AnalysisResult.objects.create(
+        user=operator,
+        comment=comment,
+        sentiment=1,
+        corrected_sentiment=-1,
+        confidence=0.82,
+        analyst_note="人工复核后修正为消极",
+    )
+
+    csv_path = export_dataset_command(
+        results=AnalysisResult.objects.filter(pk=result.pk),
+        export_format="csv",
+        operator=operator,
+        export_root=tmp_path,
+    )
+
+    csv_content = Path(csv_path).read_text(encoding="utf-8-sig")
+    assert csv_content.startswith("text,label,label_name")
+    assert "售后一直没有回复,0,negative,2,positive,0,negative" in csv_content
+
+
+@pytest.mark.django_db
 def test_dataset_export_view_maps_xlsx_to_excel(tmp_path, monkeypatch):
     operator = _admin_user()
     exported = tmp_path / "数据集导出_20260520_120000.xlsx"
@@ -136,6 +162,35 @@ def test_dataset_export_view_maps_xlsx_to_excel(tmp_path, monkeypatch):
         "%E6%95%B0%E6%8D%AE%E9%9B%86%E5%AF%BC%E5%87%BA_20260520_120000.xlsx"
         in response["Content-Disposition"]
     )
+
+
+@pytest.mark.django_db
+def test_analyst_report_export_downloads_csv_with_chinese_filename():
+    analyst = User.objects.create_user(
+        email="analyst-report-download@example.com",
+        password="TestPass123!",
+        role="analyst",
+    )
+    comment = Comment.objects.create(content="客服回复慢")
+    AnalysisResult.objects.create(
+        user=analyst,
+        comment=comment,
+        sentiment=-1,
+        confidence=0.66,
+        keywords=["客服"],
+    )
+
+    request = APIRequestFactory().get("/api/analyze/analyst/report/export/?format=csv")
+    force_authenticate(request, user=analyst)
+    response = AnalystReportExportView.as_view()(request)
+
+    assert response.status_code == 200
+    assert "analyst-report-" in response["Content-Disposition"]
+    assert "filename*=UTF-8''%E5%88%86%E6%9E%90%E5%B8%88%E6%8A%A5%E8%A1%A8_" in response[
+        "Content-Disposition"
+    ]
+    assert "摘要" in response.content.decode("utf-8-sig")
+    assert "低置信样本" in response.content.decode("utf-8-sig")
 
 
 def test_training_log_download_metadata_uses_chinese_filename(tmp_path, monkeypatch):

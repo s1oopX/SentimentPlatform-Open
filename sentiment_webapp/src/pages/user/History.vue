@@ -7,7 +7,11 @@ import { Clock, Document, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 import { usePageSizeReset } from '@/composables/usePagination'
-import { getAnalysisHistory, getAnalysisHistorySummary } from '@/api/analysis'
+import {
+  getAnalysisHistory,
+  getAnalysisHistorySessionDetail,
+  getAnalysisHistorySummary,
+} from '@/api/analysis'
 import { generateReport } from '@/api/report'
 import { extractErrorMessage } from '@/api/request'
 import KeywordStatList from '@/components/KeywordStatList.vue'
@@ -20,6 +24,7 @@ import { formatDateTimeText } from '@/utils/dateTime'
 const router = useRouter()
 const loading = ref(false)
 const summaryLoading = ref(false)
+const sessionDetailLoading = ref(false)
 const exportingPdf = ref(false)
 /**
  * @typedef {{
@@ -35,8 +40,10 @@ const exportingPdf = ref(false)
 /** @type {import('vue').Ref<any[]>} */ const tableData = ref([])
 const total = ref(0)
 /** @type {import('vue').Ref<HistorySummary | null>} */ const summary = ref(null)
+/** @type {import('vue').Ref<any | null>} */ const activeSessionDetail = ref(null)
 const errorMessage = ref('')
 const summaryError = ref('')
+const sessionDetailError = ref('')
 
 const queryParams = reactive({
   page: 1,
@@ -60,6 +67,11 @@ const sentimentTagType = (sentiment) => {
 
 const sentimentLabel = (row) =>
   row.sentiment_display || (row.sentiment === 1 ? '积极' : row.sentiment === -1 ? '消极' : '中性')
+const isBatchRow = (row) => row?.analysis_channel === 'batch'
+const channelTagType = (row) => (isBatchRow(row) ? 'warning' : 'primary')
+const channelLabel = (row) =>
+  row?.analysis_channel_display || (isBatchRow(row) ? '批量分析' : '单条分析')
+const resultCountText = (row) => `${Number(row?.result_count || 1)} 条`
 const formatConfidence = (confidence) =>
   confidence === null || confidence === undefined || confidence === ''
     ? '-'
@@ -70,6 +82,13 @@ const normalizeProgress = (progress) => {
     ? Math.max(0, Math.min(100, Math.round(numericProgress)))
     : 100
 }
+const sessionResults = computed(() => activeSessionDetail.value?.results || [])
+const activeSessionTitle = computed(() => {
+  if (!activeSessionDetail.value) return ''
+  const channel = activeSessionDetail.value.analysis_channel_display || '分析记录'
+  const count = Number(activeSessionDetail.value.result_count || sessionResults.value.length || 0)
+  return `${channel}明细（${count} 条）`
+})
 
 const fetchSummary = async () => {
   summaryLoading.value = true
@@ -108,7 +127,35 @@ const refreshHistoryPage = async () => {
 const { handlePageSizeChange } = usePageSizeReset(queryParams, refreshHistoryPage)
 
 const viewDetail = (row) => {
-  router.push({ name: 'ResultDetail', params: { id: row.id } })
+  router.push({ name: 'ResultDetail', params: { id: row.detail_result_id || row.id } })
+}
+
+const closeSessionDetail = () => {
+  activeSessionDetail.value = null
+  sessionDetailError.value = ''
+}
+
+const viewSessionDetail = async (row) => {
+  const detailId = row.detail_result_id || row.id
+  if (activeSessionDetail.value?.id === detailId) {
+    closeSessionDetail()
+    return
+  }
+
+  sessionDetailLoading.value = true
+  sessionDetailError.value = ''
+  activeSessionDetail.value = null
+  try {
+    const res = await getAnalysisHistorySessionDetail(detailId)
+    activeSessionDetail.value = res.data || null
+    if (!activeSessionDetail.value) {
+      sessionDetailError.value = '未找到本次分析明细'
+    }
+  } catch (/** @type {any} */ err) {
+    sessionDetailError.value = extractErrorMessage(err, '分析明细加载失败，请稍后重试')
+  } finally {
+    sessionDetailLoading.value = false
+  }
 }
 
 const exportCurrentPeriodPdf = async () => {
@@ -222,24 +269,41 @@ useRefreshOnActivated(refreshHistoryPage)
     </div>
 
     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <el-table v-loading="loading" :data="tableData" class="min-h-[320px]">
+      <el-table v-loading="loading" :data="tableData" row-key="id" class="min-h-[320px]">
         <template #empty>
           <div class="py-10 text-sm text-slate-500">
             {{ errorMessage || '暂无历史记录' }}
           </div>
         </template>
-        <el-table-column prop="id" label="记录ID" width="100" />
-        <el-table-column label="文本片段" min-width="320">
+        <el-table-column prop="id" label="编号" width="90" />
+        <el-table-column label="分析渠道" width="130" align="center">
+          <template #default="{ row }">
+            <el-tag :type="channelTagType(row)" effect="plain">
+              {{ channelLabel(row) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="分析内容" min-width="320">
           <template #default="{ row }">
             <div class="flex items-center gap-3">
               <el-icon class="text-slate-400"><Document /></el-icon>
-              <span class="truncate font-medium text-slate-700">{{
-                row.comment_content || '-'
-              }}</span>
+              <div class="min-w-0">
+                <span class="block truncate font-medium text-slate-700">
+                  {{ row.comment_content || '-' }}
+                </span>
+                <span v-if="row.analysis_source_name" class="block truncate text-xs text-slate-400">
+                  来源文件：{{ row.analysis_source_name }}
+                </span>
+              </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="情感定位" width="140" align="center">
+        <el-table-column label="数量" width="90" align="center">
+          <template #default="{ row }">
+            <span class="font-mono text-slate-500">{{ resultCountText(row) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="情感定位" width="190" align="center">
           <template #default="{ row }">
             <el-tag :type="sentimentTagType(row.sentiment)">
               {{ sentimentLabel(row) }}
@@ -276,12 +340,103 @@ useRefreshOnActivated(refreshHistoryPage)
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" align="center">
+        <el-table-column label="操作" width="140" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" @click="viewDetail(row)">查看详情</el-button>
+            <el-button v-if="!isBatchRow(row)" link type="primary" @click="viewDetail(row)">
+              查看详情
+            </el-button>
+            <el-button v-else link type="primary" @click="viewSessionDetail(row)">
+              查看内容
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <div
+        v-if="sessionDetailLoading || sessionDetailError || activeSessionDetail"
+        class="border-t border-slate-100 bg-slate-50 p-5"
+      >
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 class="text-base font-semibold text-slate-900">
+              {{ activeSessionTitle || '分析明细' }}
+            </h3>
+            <p v-if="activeSessionDetail?.analysis_source_name" class="mt-1 text-sm text-slate-500">
+              来源文件：{{ activeSessionDetail.analysis_source_name }}
+            </p>
+          </div>
+          <el-button
+            v-if="activeSessionDetail || sessionDetailError"
+            plain
+            @click="closeSessionDetail"
+          >
+            收起
+          </el-button>
+        </div>
+
+        <div
+          v-if="sessionDetailLoading"
+          class="flex h-32 items-center justify-center text-sm text-slate-400"
+        >
+          正在加载分析明细...
+        </div>
+        <el-alert
+          v-else-if="sessionDetailError"
+          :title="sessionDetailError"
+          type="warning"
+          show-icon
+          :closable="false"
+        />
+        <el-table
+          v-else
+          :data="sessionResults"
+          max-height="460"
+          class="rounded-lg border border-slate-200 bg-white"
+        >
+          <template #empty>
+            <div class="py-8 text-sm text-slate-500">暂无分析明细</div>
+          </template>
+          <el-table-column label="评论内容" min-width="360" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span class="font-medium text-slate-700">{{ row.comment_content || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="情感" width="110" align="center">
+            <template #default="{ row }">
+              <el-tag :type="sentimentTagType(row.sentiment)">
+                {{ sentimentLabel(row) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="置信度" width="110" align="center">
+            <template #default="{ row }">
+              <span class="font-mono text-slate-500">
+                {{ formatConfidence(row.confidence) }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="关键词" min-width="180">
+            <template #default="{ row }">
+              <div v-if="row.keywords?.length" class="flex flex-wrap gap-1">
+                <el-tag
+                  v-for="keyword in row.keywords.slice(0, 4)"
+                  :key="`${row.id}-${keyword}`"
+                  size="small"
+                  effect="plain"
+                >
+                  {{ keyword }}
+                </el-tag>
+              </div>
+              <span v-else class="text-sm text-slate-400">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="分析时间" width="180">
+            <template #default="{ row }">
+              <span class="text-sm text-slate-500">{{ formatDateTimeText(row.created_at) }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <div class="flex justify-end border-t border-slate-100 bg-white p-4">
         <el-pagination

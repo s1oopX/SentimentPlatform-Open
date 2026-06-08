@@ -17,6 +17,10 @@ const router = useRouter()
  *   comment_content?: string
  *   sentiment?: number
  *   sentiment_display?: string
+ *   corrected_sentiment?: number | null
+ *   corrected_sentiment_display?: string
+ *   final_sentiment?: number
+ *   final_sentiment_display?: string
  *   confidence?: number
  *   analyst_note?: string
  *   is_priority?: boolean
@@ -35,6 +39,7 @@ const total = ref(0)
 const editForm = reactive({
   analyst_note: '',
   is_priority: false,
+  corrected_sentiment: '',
 })
 const pagination = reactive({ page: 1, page_size: 15 })
 
@@ -111,22 +116,42 @@ const getSentimentTagType = (sentiment) => {
   return 'info'
 }
 
+const getFinalSentiment = (row) =>
+  row?.corrected_sentiment !== null && row?.corrected_sentiment !== undefined
+    ? row.corrected_sentiment
+    : row?.sentiment
+
+const getFinalSentimentDisplay = (row) =>
+  row?.corrected_sentiment_display || row?.final_sentiment_display || row?.sentiment_display || '-'
+
+const isCorrected = (row) =>
+  row?.corrected_sentiment !== null && row?.corrected_sentiment !== undefined
+
 const { handlePageSizeChange } = usePageSizeReset(pagination, fetchComments)
 
-const emptyMessage = computed(() => errorMessage.value || '未发现符合筛选条件的记录')
+const emptyMessage = computed(() => errorMessage.value || '暂无置信度低于 70% 的待复核记录')
 
 const handleEdit = (row) => {
   if (savingId.value || deletingId.value) return
   editingId.value = row.id
   editForm.analyst_note = row.analyst_note || ''
   editForm.is_priority = row.is_priority || false
+  editForm.corrected_sentiment =
+    row.corrected_sentiment !== null && row.corrected_sentiment !== undefined
+      ? String(row.corrected_sentiment)
+      : ''
 }
 
 const handleSave = async (id) => {
   if (savingId.value) return
   savingId.value = id
   try {
-    await updateAnalystComment(id, editForm)
+    await updateAnalystComment(id, {
+      analyst_note: editForm.analyst_note,
+      is_priority: editForm.is_priority,
+      corrected_sentiment:
+        editForm.corrected_sentiment === '' ? null : Number(editForm.corrected_sentiment),
+    })
     ElMessage.success('更新成功')
     editingId.value = null
     await fetchComments()
@@ -177,7 +202,7 @@ onActivated(async () => {
   <div class="h-full flex flex-col space-y-6">
     <div class="space-y-1">
       <h1 class="text-2xl font-bold text-slate-800">审核管理</h1>
-      <p class="text-slate-500 text-sm">深度标注与专家审核工作站</p>
+      <p class="text-slate-500 text-sm">仅展示模型置信度低于 70% 的待复核样本</p>
     </div>
 
     <div
@@ -316,12 +341,20 @@ onActivated(async () => {
 
                 <div class="flex flex-wrap items-center gap-4 text-sm">
                   <el-tag
-                    :type="getSentimentTagType(item.sentiment)"
+                    :type="getSentimentTagType(getFinalSentiment(item))"
                     effect="dark"
                     class="!px-3 !rounded-md"
                   >
-                    {{ item.sentiment_display || item.sentiment }}
+                    {{ getFinalSentimentDisplay(item) }}
                   </el-tag>
+                  <span
+                    v-if="isCorrected(item)"
+                    class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-xs font-semibold"
+                    >人工修正</span
+                  >
+                  <span v-else class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-xs"
+                    >模型标签</span
+                  >
                   <span class="text-slate-500 font-mono"
                     >置信度:
                     {{
@@ -366,6 +399,23 @@ onActivated(async () => {
 
             <!-- Edit Mode -->
             <div v-else class="space-y-6 animate-in fade-in duration-200">
+              <div class="space-y-2">
+                <label class="text-sm font-bold text-slate-900">最终情感标签</label>
+                <el-select
+                  v-model="editForm.corrected_sentiment"
+                  class="!w-full el-input-rounded"
+                  placeholder="保持模型判断"
+                >
+                  <el-option
+                    :label="`保持模型判断（${item.sentiment_display || item.sentiment}）`"
+                    value=""
+                  />
+                  <el-option label="积极" value="1" />
+                  <el-option label="中性" value="0" />
+                  <el-option label="消极" value="-1" />
+                </el-select>
+              </div>
+
               <div class="space-y-2">
                 <label class="text-sm font-bold text-slate-900">专家备注</label>
                 <el-input

@@ -57,8 +57,8 @@ src/
 | 路由 | 功能 |
 | --- | --- |
 | `/analyst/overview` | 分析师工作台 |
-| `/analyst/comments` | 评论审核与备注 |
-| `/analyst/reports` | 分析师报表 |
+| `/analyst/comments` | 评论审核、备注与情感修正 |
+| `/analyst/reports` | 分析师报表与 CSV/XLSX 导出 |
 | `/analyst/profile` | 个人资料 |
 
 管理员：
@@ -67,7 +67,7 @@ src/
 | --- | --- |
 | `/admin/dashboard` | 控制台总览 |
 | `/admin/users` | 用户管理 |
-| `/admin/datasets` | 数据集管理 |
+| `/admin/datasets` | 分析结果数据集沉淀、筛选导出与自动重训状态 |
 | `/admin/models` | 模型管理 |
 | `/admin/training` | 训练中心，BERT 配置与训练记录管理 |
 | `/admin/logs` | 操作日志 |
@@ -87,10 +87,13 @@ src/
 | 历史与详情 | `user/History.vue`、`ResultDetail.vue` | `/api/analyze/history/`、`/api/analyze/result/<id>/` |
 | 报告中心 | `user/ReportCenter.vue` | `/api/report/generate/`、`/api/report/list/`、`/api/report/download/<id>/` |
 | 评论审核 | `analyst/CommentsList.vue` | `/api/analyze/analyst/comments/` |
-| 数据集管理 | `admin/DatasetManage.vue` | `/api/admin/datasets/`、`import`、`export` |
+| 分析师报表 | `analyst/AnalystReport.vue` | `/api/analyze/analyst/report/`、`report/export/` |
+| 数据集管理 | `admin/DatasetManage.vue` | `/api/admin/datasets/`、`export`、`auto-retrain/status` |
 | 模型与训练 | `admin/ModelManage.vue`、`TrainingCenter.vue` | `/api/admin/models/`、`/api/admin/training/*` |
 
-训练中心页面以管理员视角展示 BERT 训练参数、本地数据集 `chinese-news-sentiment-c3-ds`、训练终端命令要点和训练记录管理入口，支持查看详情、重试、激活和删除失败/演示命名记录。
+批量分析页面会在上传完成后展示本次分析摘要、情感分布、关键词和结果明细；管理员数据集页面展示可训练累计、阈值进度、最近自动重训批次和筛选/选中导出入口。
+
+训练中心页面以管理员视角展示 BERT 训练参数、本地数据集、训练终端命令要点和训练记录管理入口，支持查看详情、重试、激活和删除失败/演示命名记录。
 
 ## 请求层设计
 

@@ -1,7 +1,11 @@
 from collections import Counter
+import uuid
 
 from django.db import transaction
 
+from apps.admin_panel.infra.automation.auto_retrain import (
+    queue_auto_retrain_check_best_effort,
+)
 from apps.admin_panel.infra.automation.system_config import get_max_batch_records
 from apps.analysis.application.errors import AnalysisApplicationError
 from apps.analysis.domain.category_rules import infer_comment_category
@@ -87,6 +91,8 @@ def analyze_batch_comments(
     predict_sentiment_batch=None,
 ):
     uploaded_file = validated_data["file"]
+    analysis_session_id = uuid.uuid4()
+    analysis_source_name = str(getattr(uploaded_file, "name", "") or "")[:255]
 
     try:
         comments = parse_batch_comments(uploaded_file)
@@ -137,6 +143,9 @@ def analyze_batch_comments(
                         sentiment=sentiment,
                         confidence=confidence,
                         keywords=keywords,
+                        analysis_channel="batch",
+                        analysis_session_id=analysis_session_id,
+                        analysis_source_name=analysis_source_name,
                     )
                 )
     except Exception as exc:
@@ -148,6 +157,7 @@ def analyze_batch_comments(
         detail=f"批量分析 {len(comments)} 条评论",
         ip=client_ip,
     )
+    queue_auto_retrain_check_best_effort()
 
     return {
         "total": len(analysis_results),

@@ -10,10 +10,9 @@ from apps.admin_panel.api.responses import (
     StandardResultsSetPagination,
     build_service_error_response,
 )
-from apps.admin_panel.api.serializers import CommentAdminSerializer
-from apps.admin_panel.api.views.base import AdminOnlyAPIView, get_required_reason
+from apps.admin_panel.api.serializers import DatasetAnalysisResultSerializer
+from apps.admin_panel.api.views.base import AdminOnlyAPIView
 from apps.admin_panel.application.dataset_admin.commands import (
-    delete_datasets_command,
     import_dataset_command,
 )
 from apps.admin_panel.application.dataset_admin.queries import (
@@ -23,6 +22,7 @@ from apps.admin_panel.application.dataset_admin.queries import (
 )
 from apps.admin_panel.application.errors import AdminPanelApplicationError
 from apps.admin_panel.infra.audit_logs import create_operation_log
+from apps.admin_panel.infra.automation.auto_retrain import build_auto_retrain_status
 from apps.admin_panel.services import export_dataset
 from core.request_ip import get_request_ip
 
@@ -45,6 +45,11 @@ class DatasetView(AdminOnlyAPIView):
             comments = build_dataset_list_response(
                 project_name=request.query_params.get("project_name", ""),
                 category=request.query_params.get("category", ""),
+                source=request.query_params.get("source", ""),
+                keyword=request.query_params.get("keyword", ""),
+                final_sentiment=request.query_params.get("final_sentiment", ""),
+                review_status=request.query_params.get("review_status", ""),
+                analysis_channel=request.query_params.get("analysis_channel", ""),
                 start_date=request.query_params.get("start_date", ""),
                 end_date=request.query_params.get("end_date", ""),
             )
@@ -54,38 +59,16 @@ class DatasetView(AdminOnlyAPIView):
         paginator = StandardResultsSetPagination()
         paginated_comments = paginator.paginate_queryset(comments, request, view=self)
         return paginator.get_paginated_response(
-            CommentAdminSerializer(paginated_comments, many=True).data
+            DatasetAnalysisResultSerializer(paginated_comments, many=True).data
         )
 
     _MAX_DELETE_IDS = 100
 
     def delete(self, request):
-        ids = request.data.get("ids", [])
-        if not isinstance(ids, list) or len(ids) > self._MAX_DELETE_IDS:
-            return Response(
-                {"error": f"ids 必须为列表且不超过 {self._MAX_DELETE_IDS} 个"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        try:
-            ids = [int(i) for i in ids]
-        except (ValueError, TypeError):
-            return Response(
-                {"error": "ids 必须为整数列表"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        try:
-            reason = get_required_reason(request)
-            delete_datasets_command(
-                ids=ids,
-                reason=reason,
-                operator=request.user,
-                client_ip=get_request_ip(request),
-                create_operation_log_fn=create_operation_log,
-            )
-        except AdminPanelApplicationError as exc:
-            return build_service_error_response(exc)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"error": "数据集管理用于沉淀用户分析记录，不支持删除记录"},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
 
 class DatasetImportView(AdminOnlyAPIView):
@@ -126,11 +109,11 @@ class DatasetExportView(AdminOnlyAPIView):
             )
         service_export_format = "excel" if export_format == "xlsx" else export_format
         try:
-            comments = build_dataset_export_response(
+            results = build_dataset_export_response(
                 **_build_export_query_params(request)
             )
             file_path = export_dataset(
-                comments=comments,
+                results=results,
                 export_format=service_export_format,
                 operator=request.user,
                 client_ip=get_request_ip(request),
@@ -150,3 +133,8 @@ class DatasetExportView(AdminOnlyAPIView):
             as_attachment=True,
             filename=filename,
         )
+
+
+class DatasetAutoRetrainStatusView(AdminOnlyAPIView):
+    def get(self, _request):
+        return Response(build_auto_retrain_status())

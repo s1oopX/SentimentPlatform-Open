@@ -23,9 +23,9 @@ def get_default_system_config():
         "report_pdf_show_category_distribution": True,
         "report_pdf_show_confidence_buckets": True,
         "report_pdf_footer_note": "由情感分析平台生成",
-        "auto_retrain_enabled": False,
-        "auto_retrain_mode": "signal",
-        "auto_retrain_threshold": 5000,
+        "auto_retrain_enabled": bool(getattr(settings, "AUTO_RETRAIN_ENABLED", True)),
+        "auto_retrain_mode": getattr(settings, "AUTO_RETRAIN_MODE", "auto"),
+        "auto_retrain_threshold": int(getattr(settings, "AUTO_RETRAIN_THRESHOLD", 5000)),
     }
 
 

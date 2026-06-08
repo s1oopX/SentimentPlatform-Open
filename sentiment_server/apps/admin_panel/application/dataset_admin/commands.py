@@ -23,6 +23,8 @@ from core.spreadsheet_safety import escape_spreadsheet_formula
 
 DATASET_EXPORT_SUPPORTED_FORMATS = {"csv", "excel"}
 DATASET_EXPORT_FILE_PREFIX = "数据集导出"
+SENTIMENT_TO_DATASET_LABEL = {-1: 0, 0: 1, 1: 2}
+SENTIMENT_TO_DATASET_NAME = {-1: "negative", 0: "neutral", 1: "positive"}
 
 
 def _clean_comment_score(value):
@@ -50,6 +52,68 @@ def _export_cell_value(value):
     if isinstance(value, datetime) and timezone.is_aware(value):
         return timezone.localtime(value).replace(tzinfo=None)
     return escape_spreadsheet_formula(value)
+
+
+def _queryset_count(rows):
+    if hasattr(rows, "count"):
+        return rows.count()
+    return len(rows)
+
+
+def _sentiment_label_value(sentiment):
+    return SENTIMENT_TO_DATASET_LABEL.get(sentiment, "")
+
+
+def _sentiment_label_name(sentiment):
+    return SENTIMENT_TO_DATASET_NAME.get(sentiment, "")
+
+
+def _labeled_dataset_header():
+    return [
+        "text",
+        "label",
+        "label_name",
+        "model_label",
+        "model_label_name",
+        "corrected_label",
+        "corrected_label_name",
+        "confidence",
+        "category",
+        "source",
+        "project",
+        "analysis_channel",
+        "analysis_source",
+        "user_email",
+        "analysis_time",
+        "reviewed_by",
+        "reviewed_at",
+        "analyst_note",
+    ]
+
+
+def _labeled_dataset_row(result):
+    final_sentiment = result.final_sentiment
+    corrected_sentiment = result.corrected_sentiment
+    return [
+        _export_cell_value(result.comment.content),
+        _sentiment_label_value(final_sentiment),
+        _sentiment_label_name(final_sentiment),
+        _sentiment_label_value(result.sentiment),
+        _sentiment_label_name(result.sentiment),
+        _sentiment_label_value(corrected_sentiment),
+        _sentiment_label_name(corrected_sentiment),
+        result.confidence,
+        _export_cell_value(result.comment.category),
+        _export_cell_value(result.comment.source),
+        _export_cell_value(result.comment.project_name),
+        result.analysis_channel,
+        _export_cell_value(result.analysis_source_name),
+        _export_cell_value(result.user.email if result.user_id else ""),
+        _export_cell_value(result.created_at),
+        _export_cell_value(result.reviewed_by.email if result.reviewed_by_id else ""),
+        _export_cell_value(result.reviewed_at),
+        _export_cell_value(result.analyst_note),
+    ]
 
 
 def validate_uploaded_file_size_command(
@@ -183,7 +247,8 @@ def import_dataset_command(
 
 def export_dataset_command(
     *,
-    comments,
+    comments=None,
+    results=None,
     export_format,
     operator,
     client_ip=None,
@@ -207,6 +272,8 @@ def export_dataset_command(
     export_format = _normalize_export_format(
         export_format, error_cls=AdminPanelApplicationError
     )
+    exporting_labeled_results = results is not None
+    rows = results if exporting_labeled_results else comments
 
     makedirs_fn(export_root, exist_ok=True)
     cleanup_cutoff = timezone_module.now().timestamp() - retention_seconds
@@ -230,22 +297,27 @@ def export_dataset_command(
         try:
             worksheet = workbook.active
             worksheet.title = "数据集"
-            worksheet.append(
-                ["ID", "内容", "项目", "评分", "类别", "来源", "评论时间", "创建时间"]
-            )
-            for comment in comments:
+            if exporting_labeled_results:
+                worksheet.append(_labeled_dataset_header())
+                for result in rows:
+                    worksheet.append(_labeled_dataset_row(result))
+            else:
                 worksheet.append(
-                    [
-                        comment.id,
-                        _export_cell_value(comment.content),
-                        _export_cell_value(comment.project_name),
-                        comment.score,
-                        _export_cell_value(comment.category),
-                        _export_cell_value(comment.source),
-                        _export_cell_value(comment.comment_time),
-                        _export_cell_value(comment.created_at),
-                    ]
+                    ["ID", "内容", "项目", "评分", "类别", "来源", "评论时间", "创建时间"]
                 )
+                for comment in rows:
+                    worksheet.append(
+                        [
+                            comment.id,
+                            _export_cell_value(comment.content),
+                            _export_cell_value(comment.project_name),
+                            comment.score,
+                            _export_cell_value(comment.category),
+                            _export_cell_value(comment.source),
+                            _export_cell_value(comment.comment_time),
+                            _export_cell_value(comment.created_at),
+                        ]
+                    )
             workbook.save(file_path)
         finally:
             workbook.close()
@@ -255,27 +327,32 @@ def export_dataset_command(
         )
         with open(file_path, "w", newline="", encoding="utf-8-sig") as file:
             writer = csv.writer(file)
-            writer.writerow(
-                ["ID", "内容", "项目", "评分", "类别", "来源", "评论时间", "创建时间"]
-            )
-            for comment in comments:
+            if exporting_labeled_results:
+                writer.writerow(_labeled_dataset_header())
+                for result in rows:
+                    writer.writerow(_labeled_dataset_row(result))
+            else:
                 writer.writerow(
-                    [
-                        comment.id,
-                        _export_cell_value(comment.content),
-                        _export_cell_value(comment.project_name),
-                        comment.score,
-                        _export_cell_value(comment.category),
-                        _export_cell_value(comment.source),
-                        _export_cell_value(comment.comment_time),
-                        _export_cell_value(comment.created_at),
-                    ]
+                    ["ID", "内容", "项目", "评分", "类别", "来源", "评论时间", "创建时间"]
                 )
+                for comment in rows:
+                    writer.writerow(
+                        [
+                            comment.id,
+                            _export_cell_value(comment.content),
+                            _export_cell_value(comment.project_name),
+                            comment.score,
+                            _export_cell_value(comment.category),
+                            _export_cell_value(comment.source),
+                            _export_cell_value(comment.comment_time),
+                            _export_cell_value(comment.created_at),
+                        ]
+                    )
 
     create_operation_log_fn(
         user=operator,
         action="download_file",
-        detail=f"导出数据集：{comments.count()} 条记录",
+        detail=f"导出数据集：{_queryset_count(rows)} 条记录",
         ip=client_ip,
     )
     return file_path

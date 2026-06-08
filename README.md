@@ -72,9 +72,9 @@ SentimentPlatform/
 | --- | --- |
 | 认证与账号 | 图形验证码、邮箱验证码、注册、登录、HttpOnly refresh cookie、无感刷新、个人资料、修改/重置密码 |
 | 情感分析 | 单条文本分析、TXT/XLSX 批量分析、批量模板下载、运行时模型能力检测、历史查询和详情查看 |
-| 分析师工作台 | 全局分析概览、评论筛选、重点标记、分析备注、统计报表 |
+| 分析师工作台 | 全局分析概览、评论筛选、情感复核修正、重点标记、分析备注、统计报表导出 |
 | 报告中心 | PDF/Excel/CSV 报告生成、异步入队、状态流转、下载与文件路径校验 |
-| 管理后台 | 用户管理、数据集导入导出、模型注册与激活、训练中心、数据库备份、操作日志 |
+| 管理后台 | 用户管理、分析结果数据集沉淀与导出、自动重训状态、模型注册与激活、训练中心、数据库备份、操作日志 |
 | 模型训练 | Transformer 微调、Transformer 超参搜索、传统模型对比、TextCNN/BiLSTM 神经网络基线训练 |
 | 运维与审计 | Celery 定时清理、自动重训检查、训练日志下载、数据库备份、操作日志保留 |
 
@@ -97,7 +97,7 @@ SentimentPlatform/
 | `users` | `users.User` | 自定义用户表，邮箱登录，含 user/analyst/admin 三角色 |
 | `email_verification_codes` | `users.EmailVerificationCode` | 邮箱验证码、用途、失败次数和过期控制 |
 | `comments` | `analysis.Comment` | 评论正文、项目名、评分、类别、来源、评论时间 |
-| `analysis_results` | `analysis.AnalysisResult` | 情感类别、置信度、关键词、分析师备注、重点标记 |
+| `analysis_results` | `analysis.AnalysisResult` | 情感类别、置信度、关键词、分析渠道、人工修正、审核信息、自动训练数据集引用 |
 | `models` | `analysis.Model` | 模型注册、版本、指标、路径、激活状态、运行时兼容性 |
 | `training_runs` | `admin_panel.TrainingRun` | 训练任务、数据集引用、配置快照、指标、产物、日志路径 |
 | `reports` | `reports.Report` | 报告类型、格式、状态、文件路径、摘要和入队信息 |
@@ -111,12 +111,15 @@ SentimentPlatform/
 - **传统模型**：`.joblib` 产物，适配 Logistic Regression、Linear SVM、Random Forest 等训练结果。
 - **神经网络模型**：`.pt` 产物，配套 `vocab.json` 与 `config_snapshot.json`，支持 TextCNN、BiLSTM。
 
-单条分析流程为“文本校验 -> 模型推理 -> 关键词归一化 -> 写入评论和分析结果 -> 写操作日志”。批量分析支持 TXT 与 XLSX，按配置限制单次最大条数，优先使用批量推理接口，失败时不保存半成品结果。
+单条分析流程为“文本校验 -> 模型推理 -> 关键词归一化 -> 写入评论和分析结果 -> 写操作日志”。批量分析支持 TXT 与 XLSX，按配置限制单次最大条数，优先使用批量推理接口，返回本次批量分析摘要与明细，失败时不保存半成品结果。
+
+分析结果会记录单条/批量分析渠道、分析会话、来源名称、人工修正情感、审核人和审核时间。高置信度样本可自动进入训练数据池，低置信度样本需分析师复核后才进入自动重训候选。
 
 训练中心可使用本地准备的数据集，围绕 BERT 训练与记录管理展开：
 
 - `auto_split`：对原始数据集执行自动 7:1:2 分层划分。
 - 管理员可在训练记录详情中删除失败、已取消或演示命名的训练记录。
+- 自动重训可按阈值将有效标注沉淀为 HuggingFace Dataset，并自动提交训练任务或只记录 signal 提醒。
 
 ## API 概览
 
@@ -124,9 +127,9 @@ SentimentPlatform/
 | --- | --- |
 | `/api/healthz/` | 健康检查 |
 | `/api/auth/` | 验证码、注册、登录、刷新、退出、资料、密码 |
-| `/api/analyze/` | 单条/批量分析、模板、历史、详情、分析师视图 |
+| `/api/analyze/` | 单条/批量分析、模板、历史、详情、分析师视图、分析师报表导出 |
 | `/api/report/` | 报告生成、列表、下载 |
-| `/api/admin/` | 用户、日志、仪表盘、备份、数据集、模型、训练中心 |
+| `/api/admin/` | 用户、日志、仪表盘、备份、数据集、自动重训状态、模型、训练中心 |
 | `/swagger/`、`/redoc/` | OpenAPI 文档，需设置 `SWAGGER_ENABLED=True`，且管理员访问 |
 
 ## 本地环境要求
@@ -218,7 +221,7 @@ npm run check
 npm run build
 ```
 
-验证结果：后端系统检查通过，后端测试通过，前端 lint、Prettier、vue-tsc 和生产构建均通过。
+验证结果：后端系统检查通过，后端测试 `122 passed`，前端 lint、Prettier、vue-tsc 和生产构建均通过。
 
 ## 详细文档
 

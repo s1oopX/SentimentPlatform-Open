@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import transaction
 
 from apps.analysis.domain.category_rules import infer_comment_category
@@ -8,6 +10,7 @@ from apps.analysis.models import AnalysisResult, Comment
 
 def analyze_single_comment(*, validated_data, user, client_ip=None, predict_sentiment):
     content = validated_data["content"]
+    analysis_session_id = uuid.uuid4()
 
     sentiment, confidence, keywords = predict_sentiment(content)
     keywords = normalize_keywords(keywords)
@@ -23,6 +26,8 @@ def analyze_single_comment(*, validated_data, user, client_ip=None, predict_sent
             sentiment=sentiment,
             confidence=confidence,
             keywords=keywords,
+            analysis_channel="single",
+            analysis_session_id=analysis_session_id,
         )
 
     write_operation_log(

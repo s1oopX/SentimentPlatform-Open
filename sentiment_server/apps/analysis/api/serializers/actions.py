@@ -27,6 +27,12 @@ class PublicAnalysisResultSerializer(serializers.ModelSerializer):
     sentiment_display = serializers.CharField(
         source="get_sentiment_display", read_only=True
     )
+    corrected_sentiment_display = serializers.SerializerMethodField()
+    final_sentiment = serializers.SerializerMethodField()
+    final_sentiment_display = serializers.SerializerMethodField()
+    reviewed_by_email = serializers.CharField(
+        source="reviewed_by.email", read_only=True, default=""
+    )
     analysis_status = serializers.SerializerMethodField()
     analysis_status_display = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
@@ -38,6 +44,9 @@ class PublicAnalysisResultSerializer(serializers.ModelSerializer):
     )
     source = serializers.CharField(source="comment.source", read_only=True)
     project_name = serializers.CharField(source="comment.project_name", read_only=True)
+    analysis_channel_display = serializers.CharField(
+        source="get_analysis_channel_display", read_only=True
+    )
 
     class Meta:
         model = AnalysisResult
@@ -49,14 +58,24 @@ class PublicAnalysisResultSerializer(serializers.ModelSerializer):
             "progress",
             "sentiment",
             "sentiment_display",
+            "corrected_sentiment",
+            "corrected_sentiment_display",
+            "final_sentiment",
+            "final_sentiment_display",
             "confidence",
             "keywords",
             "category",
             "comment_time",
             "source",
             "project_name",
+            "analysis_channel",
+            "analysis_channel_display",
+            "analysis_session_id",
+            "analysis_source_name",
             "analyst_note",
             "is_priority",
+            "reviewed_by_email",
+            "reviewed_at",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
@@ -75,6 +94,17 @@ class PublicAnalysisResultSerializer(serializers.ModelSerializer):
 
     def get_keywords(self, obj):
         return normalize_keywords(obj.keywords)
+
+    def get_corrected_sentiment_display(self, obj):
+        if obj.corrected_sentiment is None:
+            return ""
+        return obj.get_corrected_sentiment_display()
+
+    def get_final_sentiment(self, obj):
+        return obj.final_sentiment
+
+    def get_final_sentiment_display(self, obj):
+        return obj.get_final_sentiment_display()
 
 
 class AnalysisResultSerializer(serializers.ModelSerializer):

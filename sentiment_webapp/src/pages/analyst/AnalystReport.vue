@@ -1,11 +1,22 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { DataLine, Opportunity, PieChart, Refresh, TrendCharts } from '@element-plus/icons-vue'
+import {
+  DataLine,
+  Download,
+  Opportunity,
+  PieChart,
+  Refresh,
+  TrendCharts,
+} from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
-import { getAnalystReport } from '@/api/analysis'
+import { exportAnalystReport, getAnalystReport } from '@/api/analysis'
 import { buildDateRangeParams, normalizeText } from '@/utils/filterUtils'
 import { useRouteFilterSync } from '@/composables/useRouteFilterSync'
+import { extractBlobErrorMessage } from '@/utils/blobReader'
+import { parseContentDispositionFilename } from '@/utils/contentDisposition'
+import { downloadBlob } from '@/utils/download'
 import AppPanel from '@/components/AppPanel.vue'
 import KeywordStatList from '@/components/KeywordStatList.vue'
 import MetricBarChart from '@/components/MetricBarChart.vue'
@@ -22,6 +33,8 @@ import WordCloudChart from '@/components/WordCloudChart.vue'
  *   trend?: { dates?: string[]; series?: any[]; detail?: any[] }
  *   range?: { start_date?: string; end_date?: string }
  *   priority_trend?: { dates?: string[]; data?: number[] }
+ *   quality_summary?: Record<string, any>
+ *   correction_matrix?: any[]
  *   keyword_top?: any[]
  *   sentiment_distribution?: any
  *   category_distribution?: any[]
@@ -35,6 +48,15 @@ const route = useRoute()
 const router = useRouter()
 /** @type {import('vue').Ref<AnalystReportData | null>} */ const reportData = ref(null)
 const routeFilterKeys = ['category', 'start_date', 'end_date']
+const exportFormat = ref('xlsx')
+const exporting = ref(false)
+
+const buildReportParams = (f) => {
+  const params = {}
+  const cat = normalizeText(f.category)
+  if (cat) params.category = cat
+  return { ...params, ...buildDateRangeParams(f) }
+}
 
 const {
   filters,
@@ -47,12 +69,7 @@ const {
   router,
   route,
   filterKeys: routeFilterKeys,
-  buildParams: (f) => {
-    const params = {}
-    const cat = normalizeText(f.category)
-    if (cat) params.category = cat
-    return { ...params, ...buildDateRangeParams(f) }
-  },
+  buildParams: buildReportParams,
   fetchFn: (params) => getAnalystReport(params),
   onFetched: (res) => {
     reportData.value = res.data || null
@@ -64,14 +81,53 @@ const formatNumber = (value) => {
   return Number.isFinite(number) ? number.toLocaleString('zh-CN') : '0'
 }
 
+const formatPercent = (value) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? `${number.toFixed(1)}%` : '0.0%'
+}
+
 const summaryCards = computed(() => {
   const summary = reportData.value?.summary || {}
   return [
-    { title: '累计审核', value: summary.total, tone: 'slate', icon: DataLine },
+    { title: '全部记录', value: summary.total, tone: 'slate', icon: DataLine },
     { title: '积极样本', value: summary.positive, tone: 'blue', icon: TrendCharts },
     { title: '中性样本', value: summary.neutral, tone: 'amber', icon: PieChart },
     { title: '消极样本', value: summary.negative, tone: 'red', icon: PieChart },
     { title: '重点关注', value: summary.priority_count, tone: 'red', icon: Opportunity },
+  ]
+})
+
+const qualityCards = computed(() => {
+  const quality = reportData.value?.quality_summary || {}
+  return [
+    {
+      title: '低置信样本',
+      value: quality.low_confidence_count,
+      note: `占比 ${formatPercent(quality.low_confidence_rate)}`,
+      tone: 'amber',
+      icon: DataLine,
+    },
+    {
+      title: '待复核',
+      value: quality.pending_review_count,
+      note: '低于 70% 且未审核',
+      tone: 'red',
+      icon: Opportunity,
+    },
+    {
+      title: '已审核',
+      value: quality.reviewed_count,
+      note: `覆盖率 ${formatPercent(quality.review_rate)}`,
+      tone: 'green',
+      icon: TrendCharts,
+    },
+    {
+      title: '已审核修正率',
+      value: formatPercent(quality.correction_rate),
+      note: `${formatNumber(quality.corrected_count)} / ${formatNumber(quality.reviewed_count)} 条审核被修正`,
+      tone: 'blue',
+      icon: PieChart,
+    },
   ]
 })
 
@@ -87,17 +143,60 @@ const priorityTrendSeries = computed(() => {
   if (!dates.length) return []
   return [{ name: '重点评论', key: 'priority', data: values }]
 })
+
+const correctionMatrixRows = computed(() =>
+  Array.isArray(reportData.value?.correction_matrix) ? reportData.value.correction_matrix : []
+)
+
+const handleExport = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const response = await exportAnalystReport({
+      ...buildReportParams(filters),
+      format: exportFormat.value,
+    })
+    const suffix = exportFormat.value === 'csv' ? 'csv' : 'xlsx'
+    const filename = parseContentDispositionFilename(
+      response?.headers?.['content-disposition'],
+      `分析师报表.${suffix}`
+    )
+    const blob = response?.data instanceof Blob ? response.data : new Blob([response?.data || ''])
+    downloadBlob(blob, filename)
+    ElMessage.success('报表已开始下载')
+  } catch (/** @type {any} */ err) {
+    const message = await extractBlobErrorMessage(err, '分析师报表导出失败，请稍后重试')
+    ElMessage.error(message)
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <template>
   <div class="space-y-6">
     <PageHeader
       title="分析师报表"
-      description="回顾专家审核的各维度数据与质量指标"
+      description="回顾全量分析结果与人工审核质量指标"
       :meta="rangeLabel ? `统计范围：${rangeLabel}` : ''"
     >
       <template #actions>
-        <el-button :icon="Refresh" circle :loading="loading" @click="fetchReport" />
+        <div class="flex flex-wrap items-center gap-3">
+          <el-select v-model="exportFormat" class="!w-28" size="large">
+            <el-option label="XLSX" value="xlsx" />
+            <el-option label="CSV" value="csv" />
+          </el-select>
+          <el-button
+            type="primary"
+            class="!h-10 !rounded-lg"
+            :loading="exporting"
+            @click="handleExport"
+          >
+            <el-icon class="mr-1"><Download /></el-icon>
+            导出报表
+          </el-button>
+          <el-button :icon="Refresh" circle :loading="loading" @click="fetchReport" />
+        </div>
       </template>
     </PageHeader>
 
@@ -184,6 +283,18 @@ const priorityTrendSeries = computed(() => {
         />
       </div>
 
+      <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <StatCard
+          v-for="card in qualityCards"
+          :key="card.title"
+          :title="card.title"
+          :value="card.value"
+          :note="card.note"
+          :icon="card.icon"
+          :tone="card.tone"
+        />
+      </div>
+
       <!-- Charts Row 1: Sentiment + Trend -->
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <AppPanel title="情感分布">
@@ -247,6 +358,20 @@ const priorityTrendSeries = computed(() => {
           empty-text="暂无关键词数据"
         />
       </div>
+
+      <AppPanel title="模型标签与最终标签差异">
+        <el-table
+          v-if="correctionMatrixRows.length"
+          :data="correctionMatrixRows"
+          size="small"
+          class="w-full"
+        >
+          <el-table-column prop="model_sentiment_display" label="模型标签" />
+          <el-table-column prop="final_sentiment_display" label="最终标签" />
+          <el-table-column prop="count" label="数量" width="120" align="right" />
+        </el-table>
+        <p v-else class="py-10 text-center text-sm text-slate-400">暂无人工修正差异</p>
+      </AppPanel>
     </template>
   </div>
 </template>

@@ -120,7 +120,7 @@ const fetchModels = async () => {
       page_size: queryParams.page_size,
     })
     const rows = res?.data?.results ?? res?.data ?? []
-    tableData.value = Array.isArray(rows) ? rows.sort((a, b) => a.id - b.id) : []
+    tableData.value = Array.isArray(rows) ? rows : []
     total.value = res?.data?.count ?? tableData.value.length
     const currentSelected = selectedModel.value
     if (currentSelected && !tableData.value.some((item) => item.id === currentSelected.id)) {

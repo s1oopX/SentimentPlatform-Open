@@ -9,10 +9,12 @@ from apps.analysis.api.views.analyst import (
     AnalystCommentDetailView,
     AnalystCommentListView,
     AnalystOverviewView,
+    AnalystReportExportView,
     AnalystReportView,
 )
 from apps.analysis.api.views.history import (
     AnalysisHistorySummaryView,
+    AnalysisHistorySessionDetailView,
     AnalysisHistoryView,
     AnalysisResultDetailView,
 )
@@ -36,6 +38,11 @@ urlpatterns = [
         name="analysis-history-summary",
     ),
     path(
+        "history/session/<int:pk>/",
+        AnalysisHistorySessionDetailView.as_view(),
+        name="analysis-history-session-detail",
+    ),
+    path(
         "result/<int:pk>/",
         AnalysisResultDetailView.as_view(),
         name="analysis-result-detail",
@@ -50,4 +57,9 @@ urlpatterns = [
         name="analyst-comment-detail",
     ),
     path("analyst/report/", AnalystReportView.as_view(), name="analyst-report"),
+    path(
+        "analyst/report/export/",
+        AnalystReportExportView.as_view(),
+        name="analyst-report-export",
+    ),
 ]

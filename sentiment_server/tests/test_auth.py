@@ -254,6 +254,51 @@ class TestRegisterLogin(TestCase):
         })
         assert login_res.status_code in (400, 401)
 
+    def test_disabled_user_login_returns_clear_message(self):
+        user = self._create_user_directly('disabled-login@example.com')
+        user.status = 0
+        user.save(update_fields=['status'])
+        captcha_key, captcha_code = self._get_captcha_from_api()
+
+        res = self.client.post('/api/auth/login/', {
+            'email': 'disabled-login@example.com',
+            'password': 'SecurePass123',
+            'captcha_key': captcha_key,
+            'captcha_code': captcha_code,
+        })
+
+        assert res.status_code == 403
+        assert res.data['error'] == '账号已被禁用'
+
+    def test_disabled_user_existing_access_token_is_rejected(self):
+        user = self._create_user_directly('disabled-token@example.com')
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        user.status = 0
+        user.save(update_fields=['status'])
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
+
+        res = self.client.get('/api/auth/profile/')
+
+        assert res.status_code == 401
+        assert str(res.data['detail']) == '账号已被禁用'
+
+    def test_disabled_user_refresh_cookie_is_rejected_with_clear_message(self):
+        user = self._create_user_directly('disabled-refresh@example.com')
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        refresh = RefreshToken.for_user(user)
+        user.status = 0
+        user.save(update_fields=['status'])
+        self.client.cookies['refresh_token'] = str(refresh)
+
+        res = self.client.post('/api/auth/refresh/', {})
+
+        assert res.status_code == 401
+        assert str(res.data['detail']) == '账号已被禁用'
+
 
 @pytest.mark.django_db
 class TestPasswordPolicy(TestCase):

@@ -1,17 +1,12 @@
 <script setup>
-import { computed, ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { usePageSizeReset } from '@/composables/usePagination'
-import { exportDataset, getDatasets, importDataset } from '@/api/admin'
-import { getRuntimeCapabilities } from '@/api/analysis'
+import { exportDataset, getAutoRetrainStatus, getDatasets } from '@/api/admin'
 import { extractBlobErrorMessage } from '@/utils/blobReader'
 import { parseContentDispositionFilename } from '@/utils/contentDisposition'
 import { downloadBlob } from '@/utils/download'
 import { ElMessage } from 'element-plus'
-import { Files, Refresh, Download, Plus } from '@element-plus/icons-vue'
-import {
-  FALLBACK_RUNTIME_CAPABILITIES,
-  normalizeRuntimeCapabilities,
-} from '@/utils/runtimeCapabilities'
+import { DataLine, Download, Files, Refresh, Search } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 
 const loading = ref(false)
@@ -19,46 +14,70 @@ const loading = ref(false)
 const total = ref(0)
 const errorMessage = ref('')
 const exportErrorMessage = ref('')
-const importErrorMessage = ref('')
-const isImporting = ref(false)
-/** @type {import('vue').Ref<HTMLInputElement | null>} */ const fileInputRef = ref(null)
+const autoRetrainLoading = ref(false)
+const autoRetrainErrorMessage = ref('')
+/** @type {import('vue').Ref<any>} */ const autoRetrainStatus = ref(null)
 /** @type {import('vue').Ref<any>} */ const tableRef = ref(null)
 /** @type {import('vue').Ref<any[]>} */ const selectedRows = ref([])
-const batchMode = ref(false)
-const runtimeCapabilities = ref(FALLBACK_RUNTIME_CAPABILITIES)
+const exportFormat = ref('csv')
+
 const queryParams = reactive({
   page: 1,
   page_size: 15,
+  keyword: '',
+  project_name: '',
+  category: '',
+  source: '',
+  final_sentiment: '',
+  review_status: '',
+  analysis_channel: '',
+  start_date: '',
+  end_date: '',
 })
 
-const acceptTypes = computed(() =>
-  runtimeCapabilities.value.dataset_import_supported_formats.join(',')
+const emptyStateMessage = computed(() => errorMessage.value || '暂无可导出的分析记录')
+const selectedCount = computed(() => selectedRows.value.length)
+const currentPageCorrectedCount = computed(
+  () =>
+    tableData.value.filter(
+      (row) => row.corrected_sentiment !== null && row.corrected_sentiment !== undefined
+    ).length
 )
+const autoRetrainProgressPercent = computed(() => {
+  const ratio = Number(autoRetrainStatus.value?.progress_ratio || 0)
+  return Math.min(Math.round(ratio * 100), 100)
+})
+const latestAutoRetrainBatch = computed(() => autoRetrainStatus.value?.recent_batches?.[0] || null)
 
-const loadRuntimeCapabilities = async () => {
-  try {
-    const res = await getRuntimeCapabilities()
-    runtimeCapabilities.value = normalizeRuntimeCapabilities(res.data)
-  } catch {
-    runtimeCapabilities.value = normalizeRuntimeCapabilities()
+const buildQueryPayload = ({ includePagination = true } = {}) => {
+  const payload = {}
+  if (includePagination) {
+    payload.page = queryParams.page
+    payload.page_size = queryParams.page_size
   }
-}
 
-const emptyStateMessage = computed(() => errorMessage.value || '暂无数据集记录')
-
-const buildDownloadFileName = (row) => {
-  const fileName = `评论数据_${row?.id || '导出'}`
-  return `${fileName}.csv`
+  for (const key of [
+    'keyword',
+    'project_name',
+    'category',
+    'source',
+    'final_sentiment',
+    'review_status',
+    'analysis_channel',
+    'start_date',
+    'end_date',
+  ]) {
+    const value = String(queryParams[key] ?? '').trim()
+    if (value) payload[key] = value
+  }
+  return payload
 }
 
 const fetchDatasets = async () => {
   loading.value = true
   errorMessage.value = ''
   try {
-    const res = await getDatasets({
-      page: queryParams.page,
-      page_size: queryParams.page_size,
-    })
+    const res = await getDatasets(buildQueryPayload())
     const rows = res?.data?.results ?? res?.data ?? []
     tableData.value = Array.isArray(rows) ? rows : []
     total.value = res?.data?.count ?? tableData.value.length
@@ -66,136 +85,117 @@ const fetchDatasets = async () => {
   } catch {
     tableData.value = []
     total.value = 0
-    errorMessage.value = '数据集列表加载失败，请稍后重试'
+    errorMessage.value = '数据集记录加载失败，请稍后重试'
     return false
   } finally {
     loading.value = false
   }
 }
 
-onMounted(async () => {
-  await Promise.all([fetchDatasets(), loadRuntimeCapabilities()])
-})
+const fetchAutoRetrainStatus = async () => {
+  autoRetrainLoading.value = true
+  autoRetrainErrorMessage.value = ''
+  try {
+    const res = await getAutoRetrainStatus()
+    autoRetrainStatus.value = res?.data || null
+  } catch {
+    autoRetrainStatus.value = null
+    autoRetrainErrorMessage.value = '自动重训状态加载失败'
+  } finally {
+    autoRetrainLoading.value = false
+  }
+}
+
+const refreshAll = async () => {
+  await Promise.all([fetchDatasets(), fetchAutoRetrainStatus()])
+}
+
+onMounted(refreshAll)
 
 const { handlePageSizeChange } = usePageSizeReset(queryParams, fetchDatasets)
-
-const refreshDatasetsAfterImport = async () => {
-  queryParams.page = 1
-  const refreshed = await fetchDatasets()
-  if (!refreshed) {
-    ElMessage.warning('数据集列表刷新失败，页面数据可能不是最新')
-  }
-}
-
-const extractExportErrorMessage = (error) =>
-  extractBlobErrorMessage(error, '数据集导出失败，请稍后重试')
-
-const handleExport = async (row) => {
-  try {
-    exportErrorMessage.value = ''
-    const response = await exportDataset({
-      ids: String(row.id),
-      format: 'csv',
-    })
-    const blob = response?.data instanceof Blob ? response.data : new Blob([response?.data || ''])
-    const filename = parseContentDispositionFilename(
-      response?.headers?.['content-disposition'],
-      buildDownloadFileName(row)
-    )
-    downloadBlob(blob, filename)
-  } catch (/** @type {any} */ err) {
-    const message = await extractExportErrorMessage(err)
-    exportErrorMessage.value = message
-    ElMessage.error(message)
-  }
-}
-
-const handleBatchExport = async () => {
-  const ids = selectedRows.value.map((r) => r.id)
-  if (!ids.length) {
-    ElMessage.warning('请先勾选要导出的数据')
-    return
-  }
-  try {
-    exportErrorMessage.value = ''
-    const response = await exportDataset({ ids: ids.join(','), format: 'csv' })
-    const blob = response?.data instanceof Blob ? response.data : new Blob([response?.data || ''])
-    const filename = parseContentDispositionFilename(
-      response?.headers?.['content-disposition'],
-      `数据集导出_${Date.now()}.csv`
-    )
-    downloadBlob(blob, filename)
-    ElMessage.success(`已导出 ${ids.length} 条数据`)
-  } catch (/** @type {any} */ err) {
-    const message = await extractExportErrorMessage(err)
-    exportErrorMessage.value = message
-    ElMessage.error(message)
-  }
-}
 
 const handleSelectionChange = (rows) => {
   selectedRows.value = rows
 }
 
-const handleSelectAll = () => {
-  tableRef.value?.toggleAllSelection()
+const handleSearchChange = async () => {
+  queryParams.page = 1
+  await fetchDatasets()
 }
 
-const handleCancelBatchMode = () => {
-  batchMode.value = false
+const resetFilters = async () => {
+  Object.assign(queryParams, {
+    page: 1,
+    keyword: '',
+    project_name: '',
+    category: '',
+    source: '',
+    final_sentiment: '',
+    review_status: '',
+    analysis_channel: '',
+    start_date: '',
+    end_date: '',
+  })
   tableRef.value?.clearSelection()
+  await fetchDatasets()
 }
 
-const triggerImport = () => {
-  if (isImporting.value) return
-  fileInputRef.value?.click()
-}
+const extractExportErrorMessage = (error) =>
+  extractBlobErrorMessage(error, '数据集导出失败，请稍后重试')
 
-const resetImportInput = (event) => {
-  if (event?.target) {
-    event.target.value = ''
-  }
-}
-
-const handleImportChange = async (event) => {
-  const file = event?.target?.files?.[0]
-  if (!file) {
-    return
-  }
-
-  importErrorMessage.value = ''
-  const lowerName = file.name.toLowerCase()
-  if (!lowerName.endsWith('.txt') && !lowerName.endsWith('.xlsx')) {
-    const message = '只支持 TXT 和 Excel(.xlsx) 文件'
-    importErrorMessage.value = message
-    ElMessage.error(message)
-    resetImportInput(event)
-    return
-  }
-
-  const formData = new FormData()
-  formData.append('file', file)
-
-  isImporting.value = true
+const downloadExport = async (params, fallbackName) => {
   try {
-    const response = await importDataset(formData)
-    const count = response?.data?.count ?? 0
-    ElMessage.success(`成功导入 ${count} 条数据`)
-    await refreshDatasetsAfterImport()
+    exportErrorMessage.value = ''
+    const response = await exportDataset({
+      ...params,
+      format: exportFormat.value,
+    })
+    const blob = response?.data instanceof Blob ? response.data : new Blob([response?.data || ''])
+    const filename = parseContentDispositionFilename(
+      response?.headers?.['content-disposition'],
+      fallbackName
+    )
+    downloadBlob(blob, filename)
+    return true
   } catch (/** @type {any} */ err) {
-    const message = err?.response?.data?.error || '数据集导入失败，请稍后重试'
-    importErrorMessage.value = message
+    const message = await extractExportErrorMessage(err)
+    exportErrorMessage.value = message
     ElMessage.error(message)
-  } finally {
-    isImporting.value = false
-    resetImportInput(event)
+    return false
   }
 }
 
-const formatCategorySource = (row) => {
-  const category = row?.category || '-'
-  const source = row?.source || '-'
-  return `${category} / ${source}`
+const handleExportFiltered = async () => {
+  if (!total.value) {
+    ElMessage.warning('当前筛选条件下暂无可导出数据')
+    return
+  }
+  const suffix = exportFormat.value === 'xlsx' ? 'xlsx' : 'csv'
+  const ok = await downloadExport(
+    buildQueryPayload({ includePagination: false }),
+    `训练数据集_${Date.now()}.${suffix}`
+  )
+  if (ok) ElMessage.success(`已按当前筛选导出 ${total.value} 条记录`)
+}
+
+const handleExportSelected = async () => {
+  const ids = selectedRows.value.map((row) => row.id)
+  if (!ids.length) {
+    ElMessage.warning('请先勾选要导出的记录')
+    return
+  }
+  const suffix = exportFormat.value === 'xlsx' ? 'xlsx' : 'csv'
+  const ok = await downloadExport(
+    { ids: ids.join(',') },
+    `训练数据集_选中${ids.length}条.${suffix}`
+  )
+  if (ok) ElMessage.success(`已导出选中的 ${ids.length} 条记录`)
+}
+
+const handleExportRow = async (row) => {
+  const suffix = exportFormat.value === 'xlsx' ? 'xlsx' : 'csv'
+  const ok = await downloadExport({ ids: String(row.id) }, `训练数据_${row.id}.${suffix}`)
+  if (ok) ElMessage.success('已导出当前记录')
 }
 
 const formatDateTime = (value) => {
@@ -210,85 +210,334 @@ const formatDateTime = (value) => {
         minute: '2-digit',
       })
 }
+
+const getSentimentTagType = (sentiment) => {
+  const normalized = Number(sentiment)
+  if (normalized === -1 || sentiment === 'negative') return 'danger'
+  if (normalized === 1 || sentiment === 'positive') return 'success'
+  return 'info'
+}
+
+const hasCorrection = (row) =>
+  row?.corrected_sentiment !== null && row?.corrected_sentiment !== undefined
+
+const getLabelSourceText = (row) => (hasCorrection(row) ? '人工修正' : '模型标签')
+
+const isHighConfidence = (row) => Number(row?.confidence) >= 0.7
+
+const isEffectivelyReviewed = (row) => {
+  if (row?.review_status) return row.review_status === 'reviewed'
+  return isHighConfidence(row) || Boolean(row?.reviewed_at)
+}
+
+const getReviewStatusText = (row) =>
+  row?.review_status_display || (isEffectivelyReviewed(row) ? '已审核' : '未审核')
+
+const getReviewStatusType = (row) => (isEffectivelyReviewed(row) ? 'success' : 'warning')
+
+const getReviewMetaText = (row) => {
+  if (row?.reviewed_by_email) return row.reviewed_by_email
+  if (isHighConfidence(row)) return '高置信自动通过'
+  return '待分析师审核'
+}
+
+const getChannelText = (row) => {
+  if (row?.analysis_channel === 'batch') return '批量分析'
+  if (row?.analysis_channel === 'single') return '单条分析'
+  return row?.analysis_channel || '-'
+}
+
+const formatCategorySource = (row) => {
+  const category = row?.category || '-'
+  const source = row?.source || row?.analysis_source_name || '-'
+  return `${category} / ${source}`
+}
+
+const getTrainingStatusType = (status) => {
+  if (status === 'succeeded') return 'success'
+  if (status === 'failed' || status === 'cancelled') return 'danger'
+  if (status === 'running') return 'primary'
+  return 'warning'
+}
+
+const getTrainingStatusText = (status) => {
+  const map = {
+    queued: '已触发',
+    running: '训练中',
+    succeeded: '已完成',
+    failed: '失败',
+    cancelled: '已取消',
+  }
+  return map[status] || status || '未触发'
+}
 </script>
 
 <template>
   <div class="h-full flex flex-col space-y-6">
-    <PageHeader title="数据集管理" description="管理后端返回的评论数据，并支持按记录导出">
+    <PageHeader title="数据集管理" description="沉淀用户分析记录与分析师修正标签，导出可训练数据集">
       <template #actions>
         <div class="flex flex-wrap items-center gap-3">
-          <input
-            ref="fileInputRef"
-            type="file"
-            :accept="acceptTypes"
-            class="hidden"
-            @change="handleImportChange"
-          />
-          <template v-if="batchMode">
-            <el-button class="!h-10 !px-4 !rounded-lg" @click="handleSelectAll">
-              全选/取消
-            </el-button>
-            <el-button
-              type="primary"
-              class="!h-10 !px-4 !rounded-lg"
-              :disabled="!selectedRows.length"
-              @click="handleBatchExport"
-            >
-              <el-icon class="mr-1"><Download /></el-icon>
-              导出{{ selectedRows.length ? ` (${selectedRows.length})` : '' }}
-            </el-button>
-            <el-button class="!h-10 !px-4 !rounded-lg" @click="handleCancelBatchMode">
-              取消
-            </el-button>
-          </template>
-          <template v-else>
-            <el-button type="primary" class="!h-10 !px-4 !rounded-lg" @click="batchMode = true">
-              <el-icon class="mr-1"><Download /></el-icon>
-              批量导出
-            </el-button>
-            <el-button
-              type="primary"
-              class="!h-10 !px-4 !rounded-lg"
-              :disabled="isImporting"
-              @click="triggerImport"
-            >
-              <el-icon class="mr-1"><Plus /></el-icon>
-              {{ isImporting ? '导入中...' : '导入数据集' }}
-            </el-button>
-          </template>
+          <el-select v-model="exportFormat" class="!w-28" size="large">
+            <el-option label="CSV" value="csv" />
+            <el-option label="XLSX" value="xlsx" />
+          </el-select>
+          <el-button
+            type="primary"
+            class="!h-10 !px-4 !rounded-lg"
+            :disabled="!selectedCount"
+            @click="handleExportSelected"
+          >
+            <el-icon class="mr-1"><Download /></el-icon>
+            导出选中{{ selectedCount ? ` (${selectedCount})` : '' }}
+          </el-button>
+          <el-button type="primary" class="!h-10 !px-4 !rounded-lg" @click="handleExportFiltered">
+            <el-icon class="mr-1"><DataLine /></el-icon>
+            导出筛选结果
+          </el-button>
         </div>
       </template>
     </PageHeader>
 
+    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div class="text-sm font-semibold text-slate-900">5000 条自动重训触发</div>
+          <div class="mt-1 text-sm text-slate-500">
+            达到阈值后自动保存本批训练数据集，并提交一条训练任务
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <el-tag
+            :type="autoRetrainStatus?.enabled ? 'success' : 'info'"
+            effect="plain"
+            class="!rounded-md"
+          >
+            {{ autoRetrainStatus?.enabled ? '已启用' : '未启用' }}
+          </el-tag>
+          <el-button
+            :loading="autoRetrainLoading"
+            :icon="Refresh"
+            circle
+            @click="fetchAutoRetrainStatus"
+          />
+        </div>
+      </div>
+
+      <el-alert
+        v-if="autoRetrainErrorMessage"
+        :title="autoRetrainErrorMessage"
+        type="error"
+        show-icon
+        :closable="false"
+        class="mt-4"
+      />
+
+      <div v-else class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div>
+          <div class="mb-2 flex items-center justify-between text-sm">
+            <span class="font-medium text-slate-700">
+              当前累计 {{ autoRetrainStatus?.progress_count || 0 }} /
+              {{ autoRetrainStatus?.threshold || 5000 }}
+            </span>
+            <span class="text-slate-500">
+              还差
+              {{ autoRetrainStatus?.remaining_to_next || autoRetrainStatus?.threshold || 5000 }} 条
+            </span>
+          </div>
+          <el-progress
+            :percentage="autoRetrainProgressPercent"
+            :stroke-width="10"
+            :show-text="false"
+          />
+          <div class="mt-4 grid grid-cols-3 gap-3">
+            <div class="rounded-lg bg-slate-50 px-3 py-2">
+              <div class="text-xs text-slate-500">可训练累计</div>
+              <div class="mt-1 font-mono text-lg font-semibold text-slate-900">
+                {{ autoRetrainStatus?.pending_count || 0 }}
+              </div>
+            </div>
+            <div class="rounded-lg bg-slate-50 px-3 py-2">
+              <div class="text-xs text-slate-500">已保存批次</div>
+              <div class="mt-1 font-mono text-lg font-semibold text-slate-900">
+                {{ autoRetrainStatus?.batch_count || 0 }}
+              </div>
+            </div>
+            <div class="rounded-lg bg-slate-50 px-3 py-2">
+              <div class="text-xs text-slate-500">已入集记录</div>
+              <div class="mt-1 font-mono text-lg font-semibold text-slate-900">
+                {{ autoRetrainStatus?.batched_total || 0 }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-100 bg-slate-50/70 px-4 py-3">
+          <div class="mb-2 text-xs font-semibold text-slate-500">最近自动批次</div>
+          <div v-if="latestAutoRetrainBatch" class="space-y-2">
+            <div class="truncate text-sm font-semibold text-slate-900">
+              {{ latestAutoRetrainBatch.dataset_ref }}
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs text-slate-500">
+              <span>{{ latestAutoRetrainBatch.result_count }} 条</span>
+              <span>{{ formatDateTime(latestAutoRetrainBatch.generated_at) }}</span>
+            </div>
+            <el-tag
+              v-if="latestAutoRetrainBatch.training_run"
+              :type="getTrainingStatusType(latestAutoRetrainBatch.training_run.status)"
+              class="!rounded-md"
+            >
+              {{ getTrainingStatusText(latestAutoRetrainBatch.training_run.status) }}
+            </el-tag>
+            <span v-else class="text-xs text-slate-400">暂无训练任务</span>
+          </div>
+          <div v-else class="text-sm text-slate-500">暂无自动保存批次</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <div class="text-sm text-slate-500">筛选结果</div>
+        <div class="mt-2 text-2xl font-bold text-slate-900">{{ total }}</div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <div class="text-sm text-slate-500">当前页人工修正</div>
+        <div class="mt-2 text-2xl font-bold text-indigo-600">{{ currentPageCorrectedCount }}</div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <div class="text-sm text-slate-500">已选记录</div>
+        <div class="mt-2 text-2xl font-bold text-slate-900">{{ selectedCount }}</div>
+      </div>
+    </div>
+
     <div
       class="bg-white rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col overflow-hidden"
     >
-      <div
+      <el-alert
         v-if="errorMessage"
-        class="mx-6 mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-      >
-        {{ errorMessage }}
-      </div>
-      <div
-        v-if="importErrorMessage"
-        class="mx-6 mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-      >
-        {{ importErrorMessage }}
-      </div>
-      <div
+        :title="errorMessage"
+        type="error"
+        show-icon
+        :closable="false"
+        class="mx-6 mt-6"
+      />
+      <el-alert
         v-if="exportErrorMessage"
-        class="mx-6 mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-      >
-        {{ exportErrorMessage }}
+        :title="exportErrorMessage"
+        type="error"
+        show-icon
+        :closable="false"
+        class="mx-6 mt-6"
+      />
+
+      <div class="border-b border-slate-100 bg-slate-50/50 p-6">
+        <div class="grid grid-cols-2 items-end gap-4 md:grid-cols-4 xl:grid-cols-8">
+          <div class="col-span-2 space-y-1.5">
+            <label class="ml-1 text-xs font-semibold uppercase text-slate-500">内容检索</label>
+            <el-input
+              v-model="queryParams.keyword"
+              placeholder="搜索评论、用户、备注..."
+              class="el-input-rounded"
+              clearable
+              @change="handleSearchChange"
+            >
+              <template #prefix>
+                <el-icon class="text-slate-400"><Search /></el-icon>
+              </template>
+            </el-input>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="ml-1 text-xs font-semibold uppercase text-slate-500">最终标签</label>
+            <el-select
+              v-model="queryParams.final_sentiment"
+              class="!w-full el-input-rounded"
+              placeholder="全部"
+              @change="handleSearchChange"
+            >
+              <el-option label="全部" value="" />
+              <el-option label="积极" value="1" />
+              <el-option label="中性" value="0" />
+              <el-option label="消极" value="-1" />
+            </el-select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="ml-1 text-xs font-semibold uppercase text-slate-500">审核状态</label>
+            <el-select
+              v-model="queryParams.review_status"
+              class="!w-full el-input-rounded"
+              placeholder="全部"
+              @change="handleSearchChange"
+            >
+              <el-option label="全部" value="" />
+              <el-option label="已审核" value="reviewed" />
+              <el-option label="未审核" value="unreviewed" />
+            </el-select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="ml-1 text-xs font-semibold uppercase text-slate-500">分析渠道</label>
+            <el-select
+              v-model="queryParams.analysis_channel"
+              class="!w-full el-input-rounded"
+              placeholder="全部"
+              @change="handleSearchChange"
+            >
+              <el-option label="全部" value="" />
+              <el-option label="单条分析" value="single" />
+              <el-option label="批量分析" value="batch" />
+            </el-select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="ml-1 text-xs font-semibold uppercase text-slate-500">分类</label>
+            <el-input
+              v-model="queryParams.category"
+              placeholder="分类"
+              clearable
+              @change="handleSearchChange"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="ml-1 text-xs font-semibold uppercase text-slate-500">来源</label>
+            <el-input
+              v-model="queryParams.source"
+              placeholder="来源"
+              clearable
+              @change="handleSearchChange"
+            />
+          </div>
+
+          <div class="flex items-center gap-2">
+            <el-button :icon="Refresh" circle @click="refreshAll" />
+            <el-button class="!rounded-lg" @click="resetFilters">重置</el-button>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <input
+            v-model="queryParams.start_date"
+            type="date"
+            class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-300"
+            @change="handleSearchChange"
+          />
+          <input
+            v-model="queryParams.end_date"
+            type="date"
+            class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-300"
+            @change="handleSearchChange"
+          />
+          <el-input
+            v-model="queryParams.project_name"
+            placeholder="项目名称"
+            clearable
+            @change="handleSearchChange"
+          />
+        </div>
       </div>
 
-      <!-- Toolbar -->
-      <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-        <div class="text-sm text-slate-500">仅展示真实评论记录，不提供预览数据</div>
-        <el-button :icon="Refresh" circle @click="fetchDatasets" />
-      </div>
-
-      <!-- Table Section -->
       <div class="flex-1 overflow-hidden">
         <el-table
           ref="tableRef"
@@ -304,53 +553,99 @@ const formatDateTime = (value) => {
               {{ emptyStateMessage }}
             </div>
           </template>
-          <el-table-column
-            v-if="batchMode"
-            type="selection"
-            width="50"
-            align="center"
-            :reserve-selection="true"
-          />
-          <el-table-column prop="id" label="编号" width="70" align="center" />
 
-          <el-table-column label="评论内容" min-width="240" header-align="center">
+          <el-table-column type="selection" width="48" align="center" :reserve-selection="true" />
+          <el-table-column prop="id" label="编号" width="76" align="center" />
+
+          <el-table-column label="用户记录" min-width="300" header-align="center">
             <template #default="scope">
-              <div class="flex items-center gap-4 py-2">
-                <div class="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center">
-                  <el-icon class="text-amber-600" :size="20"><Files /></el-icon>
+              <div class="flex items-start gap-4 py-2">
+                <div
+                  class="h-10 w-10 shrink-0 rounded-xl bg-indigo-50 flex items-center justify-center"
+                >
+                  <el-icon class="text-indigo-600" :size="20"><Files /></el-icon>
                 </div>
-                <span class="font-bold text-slate-900 line-clamp-2">{{
-                  scope.row.content || '-'
-                }}</span>
+                <div class="min-w-0">
+                  <div class="line-clamp-2 font-semibold text-slate-900">
+                    {{ scope.row.content || '-' }}
+                  </div>
+                  <div class="mt-1 text-xs text-slate-500">
+                    {{ scope.row.user_email || '-' }} · {{ getChannelText(scope.row) }}
+                  </div>
+                </div>
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column label="分类 / 来源" width="120" align="center">
+          <el-table-column label="最终标签" width="130" align="center">
             <template #default="scope">
-              <span class="text-slate-500 text-sm">{{ formatCategorySource(scope.row) }}</span>
+              <div class="flex flex-col items-center gap-1">
+                <el-tag
+                  :type="getSentimentTagType(scope.row.final_sentiment)"
+                  effect="dark"
+                  class="!rounded-md !px-3"
+                >
+                  {{ scope.row.final_sentiment_display || '-' }}
+                </el-tag>
+                <span class="text-xs text-slate-500">{{ getLabelSourceText(scope.row) }}</span>
+              </div>
             </template>
           </el-table-column>
 
-          <el-table-column prop="comment_time" label="评论时间" width="140" align="center">
+          <el-table-column label="模型 / 修正" width="150" align="center">
             <template #default="scope">
-              <span class="text-slate-500 text-sm font-mono">
-                {{ formatDateTime(scope.row.comment_time) }}
-              </span>
+              <div class="text-sm text-slate-600">
+                <div>模型：{{ scope.row.model_sentiment_display || '-' }}</div>
+                <div>修正：{{ scope.row.corrected_sentiment_display || '未修正' }}</div>
+                <div class="font-mono text-xs text-slate-400">
+                  {{
+                    scope.row.confidence != null
+                      ? `${(Number(scope.row.confidence) * 100).toFixed(1)}%`
+                      : '-'
+                  }}
+                </div>
+              </div>
             </template>
           </el-table-column>
 
-          <el-table-column prop="created_at" label="创建日期" width="140" align="center">
+          <el-table-column label="分类 / 来源" width="170" align="center">
             <template #default="scope">
-              <span class="text-slate-500 text-sm font-mono">
+              <span class="text-sm text-slate-500">{{ formatCategorySource(scope.row) }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="审核信息" width="170" align="center">
+            <template #default="scope">
+              <div class="flex flex-col items-center gap-1 text-sm text-slate-600">
+                <div class="flex flex-wrap justify-center gap-1">
+                  <el-tag :type="getReviewStatusType(scope.row)" effect="plain" class="!rounded-md">
+                    {{ getReviewStatusText(scope.row) }}
+                  </el-tag>
+                  <el-tag v-if="hasCorrection(scope.row)" type="primary" class="!rounded-md">
+                    人工修正
+                  </el-tag>
+                </div>
+                <div class="max-w-full truncate text-xs text-slate-500">
+                  {{ getReviewMetaText(scope.row) }}
+                </div>
+                <div class="font-mono text-xs text-slate-400">
+                  {{ formatDateTime(scope.row.reviewed_at) }}
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="created_at" label="分析时间" width="140" align="center">
+            <template #default="scope">
+              <span class="font-mono text-sm text-slate-500">
                 {{ formatDateTime(scope.row.created_at) }}
               </span>
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="80" align="center">
+          <el-table-column label="操作" width="90" align="center">
             <template #default="scope">
-              <el-button link type="primary" class="!font-bold" @click="handleExport(scope.row)">
+              <el-button link type="primary" class="!font-bold" @click="handleExportRow(scope.row)">
                 <el-icon class="mr-1"><Download /></el-icon>
                 导出
               </el-button>
@@ -359,7 +654,6 @@ const formatDateTime = (value) => {
         </el-table>
       </div>
 
-      <!-- Pagination Footer -->
       <div class="p-4 border-t border-slate-100 bg-white flex justify-end">
         <el-pagination
           v-model:current-page="queryParams.page"

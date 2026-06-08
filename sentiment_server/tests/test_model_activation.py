@@ -13,7 +13,11 @@ from apps.admin_panel.application.training_admin.commands import (
 )
 from apps.admin_panel.application.training_admin.queries import get_training_record_detail
 from apps.admin_panel.api.serializers.runtime_registry import ModelAdminSerializer
-from apps.admin_panel.api.views.runtime_registry import ModelActivateView
+from apps.admin_panel.api.views.runtime_registry import (
+    ModelActivateView,
+    ModelLogsView,
+    ModelManagementView,
+)
 from apps.admin_panel.infra.runtime_registry.registry import runtime_artifacts_complete
 from apps.admin_panel.models import TrainingRun
 from apps.analysis.models import Model
@@ -183,6 +187,69 @@ def test_model_admin_serializer_exposes_training_origin_and_activation_metadata(
     assert data["artifact_summary"] == {"model_file": "model.joblib"}
     assert data["is_best_candidate"] is True
     assert data["activated_at"] is not None
+
+
+@pytest.mark.django_db
+def test_model_management_lists_active_model_first(model_artifact_dir):
+    admin = User.objects.create_user(
+        email="admin-model-list-order@example.com",
+        password="TestPass123!",
+        role="admin",
+    )
+    inactive_path = model_artifact_dir / "inactive.joblib"
+    active_path = model_artifact_dir / "active.joblib"
+    dump_dummy_joblib(inactive_path)
+    dump_dummy_joblib(active_path)
+    inactive = Model.objects.create(
+        name="inactive-linear",
+        version="run-1-inactive",
+        model_type="classical_compare",
+        path=str(inactive_path),
+        is_runtime_compatible=True,
+    )
+    active = Model.objects.create(
+        name="active-linear",
+        version="run-1-active",
+        model_type="classical_compare",
+        path=str(active_path),
+        is_runtime_compatible=True,
+        is_active=True,
+    )
+
+    request = APIRequestFactory().get("/api/admin/models/?page=1&page_size=10")
+    force_authenticate(request, user=admin)
+    response = ModelManagementView.as_view()(request)
+
+    ids = [row["id"] for row in response.data["results"]]
+    assert response.status_code == 200
+    assert ids.index(active.pk) < ids.index(inactive.pk)
+
+
+@pytest.mark.django_db
+def test_model_logs_detect_runtime_type_from_artifact_path(model_artifact_dir):
+    admin = User.objects.create_user(
+        email="admin-model-logs-runtime@example.com",
+        password="TestPass123!",
+        role="admin",
+    )
+    model_path = model_artifact_dir / "model.joblib"
+    dump_dummy_joblib(model_path)
+    model = Model.objects.create(
+        name="linear_svm",
+        version="run-1-linear-svm",
+        model_type="classical_compare",
+        path=str(model_path),
+        is_runtime_compatible=True,
+    )
+
+    request = APIRequestFactory().get(f"/api/admin/models/{model.pk}/logs/")
+    force_authenticate(request, user=admin)
+    response = ModelLogsView.as_view()(request, pk=model.pk)
+    messages = [row["message"] for row in response.data["logs"]]
+
+    assert response.status_code == 200
+    assert any("模型文件检查" in message for message in messages)
+    assert not any("模型目录检查完成" in message for message in messages)
 
 
 @pytest.mark.django_db

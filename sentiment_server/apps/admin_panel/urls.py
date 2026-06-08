@@ -3,6 +3,7 @@ from django.urls import path
 from apps.admin_panel.api.views.dashboard import DashboardStatsView
 from apps.admin_panel.api.views.backup import DatabaseBackupView
 from apps.admin_panel.api.views.datasets import (
+    DatasetAutoRetrainStatusView,
     DatasetExportView,
     DatasetImportView,
     DatasetView,
@@ -47,6 +48,11 @@ urlpatterns = [
     path("backup/", DatabaseBackupView.as_view(), name="admin-backup"),
     # 数据管理
     path("datasets/", DatasetView.as_view(), name="admin-datasets"),
+    path(
+        "datasets/auto-retrain-status/",
+        DatasetAutoRetrainStatusView.as_view(),
+        name="admin-dataset-auto-retrain-status",
+    ),
     path("datasets/import/", DatasetImportView.as_view(), name="admin-dataset-import"),
     path("datasets/export/", DatasetExportView.as_view(), name="admin-dataset-export"),
     # 模型管理

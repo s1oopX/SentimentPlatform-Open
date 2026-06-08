@@ -247,3 +247,59 @@ def test_neural_training_command_passes_cpu_device_when_gpu_not_requested(settin
 
     assert "--device" in command
     assert command[command.index("--device") + 1] == "cpu"
+
+
+def test_auto_split_command_accepts_generated_splits_under_training_output(settings, tmp_path):
+    dataset_root = tmp_path / "datasets"
+    raw_path = dataset_root / "auto_retrain" / "batch_1_3"
+    raw_path.mkdir(parents=True)
+
+    model_workspace = tmp_path / "ml_assets"
+    output_dir = model_workspace / "models" / "_training_runs" / "run-102" / "attempt-1"
+    train_path = output_dir / "splits" / "train"
+    eval_path = output_dir / "splits" / "val"
+    test_path = output_dir / "splits" / "test"
+    train_path.mkdir(parents=True)
+    eval_path.mkdir()
+    test_path.mkdir()
+    log_path = output_dir / "run.log"
+
+    settings.MODEL_WORKSPACE_DIR = model_workspace
+    settings.TRAINING_DATASETS_ROOT = dataset_root
+
+    training_run = TrainingRun(
+        id=102,
+        name="自动切分路径校验",
+        task_type="classical_compare",
+        status="queued",
+        dataset_source="workspace_dataset",
+        dataset_ref="auto_retrain/batch_1_3",
+        candidate_models=["linear_svm"],
+        search_type="random",
+        split_strategy="auto_split",
+        config_snapshot={
+            "request": {
+                "task_type": "classical_compare",
+                "dataset_source": "workspace_dataset",
+                "dataset_ref": "auto_retrain/batch_1_3",
+                "candidate_models": ["linear_svm"],
+                "search_type": "random",
+                "split_strategy": "auto_split",
+                "target_macro_f1": 0.85,
+            },
+            "resolved_paths": {
+                "raw_dataset_path": str(raw_path),
+                "train_dataset_path": str(train_path),
+                "eval_dataset_path": str(eval_path),
+                "test_dataset_path": str(test_path),
+                "output_dir": str(output_dir),
+                "log_path": str(log_path),
+            },
+        },
+    )
+
+    command = _build_command(training_run, script_path_fn=lambda name: Path("scripts") / name)
+
+    assert command[1] == str(Path("scripts") / "compare_models.py")
+    assert command[command.index("--train-dataset-path") + 1] == str(train_path)
+    assert command[command.index("--eval-dataset-path") + 1] == str(eval_path)

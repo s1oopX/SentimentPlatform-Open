@@ -4,6 +4,7 @@ _SERIALIZER_EXPORTS = {
     "DashboardStatsSerializer": "apps.admin_panel.api.serializers.dashboard",
     "AnalysisResultAdminSerializer": "apps.admin_panel.api.serializers.datasets",
     "CommentAdminSerializer": "apps.admin_panel.api.serializers.datasets",
+    "DatasetAnalysisResultSerializer": "apps.admin_panel.api.serializers.datasets",
     "ReportAdminSerializer": "apps.admin_panel.api.serializers.datasets",
     "ModelAdminSerializer": "apps.admin_panel.api.serializers.runtime_registry",
     "TrainingRecordCreateSerializer": "apps.admin_panel.api.serializers.training_admin",

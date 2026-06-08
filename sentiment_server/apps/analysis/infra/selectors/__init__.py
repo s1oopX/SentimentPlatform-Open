@@ -12,6 +12,7 @@ from apps.analysis.infra.selectors.analyst import (
     apply_analyst_filters,
     get_analyst_base_queryset,
     get_analyst_category_options,
+    get_visible_analyst_review_queryset,
     get_visible_analyst_queryset,
     has_analyst_access,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "get_analyst_category_options",
     "get_user_analysis_results_queryset",
     "get_user_analysis_summary_queryset",
+    "get_visible_analyst_review_queryset",
     "get_visible_analyst_queryset",
     "has_analyst_access",
     "resolve_analysis_date",

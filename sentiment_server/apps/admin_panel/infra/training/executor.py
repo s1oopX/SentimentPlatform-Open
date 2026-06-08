@@ -103,24 +103,32 @@ def _validate_resolved_paths(resolved_paths, *, split_strategy="pre_split"):
         raise RuntimeError(f"训练路径快照缺少字段: {', '.join(missing)}")
 
     validated = dict(resolved_paths)
+    split_dataset_root = training_runs_root if split_strategy == "auto_split" else datasets_root
+    if split_strategy == "auto_split" and resolved_paths.get("raw_dataset_path"):
+        validated["raw_dataset_path"] = _ensure_path_within_root(
+            resolved_paths["raw_dataset_path"],
+            root=datasets_root,
+            label="原始数据集路径",
+            must_exist=True,
+        )
     if resolved_paths.get("train_dataset_path"):
         validated["train_dataset_path"] = _ensure_path_within_root(
             resolved_paths["train_dataset_path"],
-            root=datasets_root,
+            root=split_dataset_root,
             label="训练集路径",
             must_exist=True,
         )
     if resolved_paths.get("eval_dataset_path"):
         validated["eval_dataset_path"] = _ensure_path_within_root(
             resolved_paths["eval_dataset_path"],
-            root=datasets_root,
+            root=split_dataset_root,
             label="验证集路径",
             must_exist=True,
         )
     if resolved_paths.get("test_dataset_path"):
         validated["test_dataset_path"] = _ensure_path_within_root(
             resolved_paths["test_dataset_path"],
-            root=datasets_root,
+            root=split_dataset_root,
             label="测试集路径",
             must_exist=True,
         )
